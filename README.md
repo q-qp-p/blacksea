@@ -51,7 +51,7 @@ Every time you build a bait you get an **instance**: one planted copy, carrying 
 ```
 
 1. **Run Blacksea where you're trusted.** `blacksea up` on a SOC server or similar host you control, never on a honeypot. It has to be reachable from wherever you plant baits, over HTTPS or DNS, because that's where beacons land. Nothing else about it faces the attacker.
-2. **Forge as many bait instances as you want.** One `blacksea forge` per instance: it builds the artifact, mints that copy's key, and tells you where to find the files. The payload is your choice. Blacksea ships `agent_fp`, which fingerprints the agent harness that ran it, but the payload is arbitrary code, so it can just as well burn the attacker's compute, or do whatever else you need done on that host.
+2. **Forge as many bait instances as you want.** One `blacksea forge` per instance: it builds the artifact, mints that copy's key, and tells you where to find the files. The payload is your choice. Blacksea ships `agent_fp`, which fingerprints the agent harness that ran it, but the payload is arbitrary code, so it can just as well burn the attacker's compute, or do whatever else you need done on that host (see [Deploy your first bait](./docs/setup_a_bait.md)).
 3. **Stage the baits where an attacker will look.** Honeypots you stand up for the purpose, or the real assets you're defending. A staged bait does nothing until someone runs it against the forged file it ships with, so it can sit on a live box without touching how that box works.
 
 ### What happens when a bait is tripped
