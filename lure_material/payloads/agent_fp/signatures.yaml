@@ -1,0 +1,529 @@
+# Harness signatures -- the inference module's knowledge base.
+#
+# Defensive research.
+#
+# UPSTREAM SOURCES, AND WHERE THEY ARE NOT: this knowledge base was built during a
+#   separate agent-harness study. That study's working documents -- synthesis.md,
+#   report.md, validation_design.md, FIXTURES.md, USAGE.md, optimization/report.md,
+#   the harness_notes/ and fixtures/ directories, and the extractor tools/extract.py
+#   -- are NOT part of the Blacksea repository and do not ship with it. The
+#   <doc>.md:<line> citations in the per-entry notes below point into that study, and
+#   the <file>:<line> citations point into each fingerprinted harness's own source
+#   tree; both are kept as an audit trail for where a signature came from, not as
+#   paths resolvable from here. Everything needed to USE this knowledge base is in
+#   this file plus listener.py.
+#
+# PROVENANCE RULE, and it differs from the one governing fixtures:
+#   Signatures MAY be written from the study's synthesis and report -- the
+#   classifier is *supposed* to encode the study's conclusions; that is what is
+#   being tested.
+#   Fixtures MAY NOT. A fixture written from the same notes as the signature that
+#   matches it measures self-consistency and nothing else. Fixtures come from
+#   harness SOURCE, extracted mechanically from each harness's own code.
+#
+# Fields:
+#   literal.*    exact strings. Discriminative now, brittle across versions.
+#   structural.* shapes. Weaker here, stronger against a renamed variable.
+#                A [lo, hi] pair is an inclusive numeric range.
+#                A list of strings is a membership test.
+# Any field may be omitted; omission means "no expectation", never "expect absent".
+#
+# STATUS (2026-07-23): the fixture corpus is COMPLETE -- all 32 in-scope harnesses
+# have a fixture, and no entry below is untested. Any future entry added without a
+# fixture should be marked `fixture: none` so its untested status stays visible.
+#
+# RULE FOR `literal.ns`, adopted 2026-07-23 after the cline/roo-code pair:
+#   Set `ns` ONLY when the harness sets >=2 same-prefixed variables INTO THE
+#   WORKER. A namespace that exists only in the orchestrator, in config-file
+#   schemas, or as a repo-wide textual population does not belong here.
+#   `ns` carries the heaviest literal weight in the scheme (0.55), and a
+#   MISMATCH is scored 0.0 -- so an `ns` the worker never sees does not merely
+#   fail to help, it actively suppresses the correct harness. Both cline and
+#   roo-code were missed this way: each sets exactly ONE prefixed variable
+#   (CLINE_ACTIVE / ROO_ACTIVE), while five editor-owned VSCODE_* keys win
+#   `env_namespace()` outright. Same failure as gemini-cli, where a PROVIDER
+#   prefix shadows the harness family. Two capture mechanisms, one lesson:
+#   prefer `disc_k` and `dot` where the worker-side family is thin.
+
+- harness: CAI
+  population: pentest
+  notes: "synthesis.md:250,274; mechanically confirmed: 55 env names, CAI_* = 30, CTF_* = 6"
+  literal:
+    ns: CAI
+    dot: .cai
+    pkg: cai-framework
+  structural:
+    ns_n: [5, 60]
+    role_n: 0
+    prov: [OPENAI]
+
+- harness: Artemis
+  population: pentest
+  notes: >
+    THE HARD WRAPPER. No ARTEMIS_* namespace; CODEX_* inherited intact; pyproject
+    names the wrapped tool (codex-supervisor). Only its added argv flags separate
+    it from plain codex. harness_notes/Artemis.md addendum 2026-07-23.
+  literal:
+    pkg: codex-supervisor
+    bins: [codex]
+    flags: ["--instance-id", "--wait-for-followup"]
+  structural:
+    role_n: [2, 12]
+    ns_n: [0, 2]
+
+- harness: PentAGI
+  population: pentest
+  notes: >
+    THE HARD NEGATIVE. Worker container gets no Env: at all (client.go), stock
+    debian:latest, crc32 hostname (client.go:240). Inference SHOULD abstain here;
+    this entry exists only so the abstention is a deliberate outcome, not an
+    accident of having no entry.
+  structural:
+    dens: [0, 2]
+    host: [hex8]
+    ns_n: [0, 0]
+
+# ---------------------------------------------------------------------------
+# Below: no fixture yet -> UNTESTED. Sourced from synthesis.md as cited.
+# ---------------------------------------------------------------------------
+
+- harness: STRIX
+  population: pentest
+  notes: >
+    synthesis.md:224,235,258. CORRECTED from source: `ns: STRIX` and
+    `ns_n: [2,20]` REMOVED -- the container env (docker_runtime.py:146-152) has
+    exactly ONE STRIX_* var, while TOOL_SERVER_PORT/TOOL_SERVER_TOKEN form a
+    2-member family, so env_namespace() returns TOOL. The identifying signal is
+    the hostname: `strix-scan-<scan_id>` set as both name and hostname
+    (:112,138-139), which hostname_shape() reads as named-suffixed. A separated
+    worker that names itself in $HOSTNAME -- the informative contrast with
+    PentAGI, whose worker is genuinely blank.
+
+    optimization session (2026-07-23): `host_lit: strix-scan` ADDED --
+    hostname_shape() reduces the hostname to the shape token, discarding the
+    identifying substring; host_lit is the literal counterpart read from the
+    same value. Without it STRIX's only evidence is structural ranges that
+    Decepticon's signature ALSO happens to satisfy on this fixture (ns_n=2,
+    dens=4, role_n=0 all fall inside Decepticon's own ranges), so STRIX
+    previously lost to Decepticon 0.44 vs 0.31 -- an unanticipated collision
+    the corpus had not flagged because neither side was a *named* verdict.
+  literal: {host_lit: strix-scan}
+  structural: {host: [named-suffixed], ns_n: [0, 3], dens: [1, 8]}
+
+- harness: PentestAgent
+  population: pentest
+  notes: >
+    synthesis.md:274. CONFIRMED from source and left as-is: PENTESTAGENT_MODEL /
+    _DEBUG (docker-compose.yml:10-11) and _OUTPUT_DIR (docker-entrypoint.sh:57)
+    are a genuine 3-member WRITE-population. The counterweight showing Tier-1
+    item 1 is conditional, not broken.
+  literal: {ns: PENTESTAGENT, pkg: pentestagent}
+  structural: {ns_n: [2, 20]}
+
+- harness: Kittysploit-framework
+  population: pentest
+  notes: >
+    synthesis.md:236,254,274. `prov: [OLLAMA]` REMOVED -- the models are named in
+    KITTYSPLOIT_AGENT_LLM_SMALL/_STRONG values (model_router.py:61,65), not via an
+    OLLAMA_* env prefix, so providers() returns nothing. `dot: .kittysploit`
+    ADDED (USAGE.md:521; client_api.py:586,597,680). The ns is OPERATOR-SET, so
+    it is present only when a model was configured.
+  literal: {ns: KITTYSPLOIT, dot: .kittysploit, pkg: kittysploit}
+  structural: {ns_n: [1, 30]}
+
+- harness: T3MP3ST
+  population: pentest
+  notes: >
+    synthesis.md:274. NAMESPACE/DIRECTORY MISMATCH is the thing to encode: the
+    env prefix is TEMPEST_ (recon/whitebox.ts:165-172) but the package and dotdir
+    are t3mp3st (package.json:2). `role_n` left at 0 -- the per-role *_MODEL vars
+    DO share the harness prefix, so role_named_model_vars() (which looks for
+    role-naming WITHOUT a prefix, the Artemis shape) correctly finds none.
+  literal: {ns: TEMPEST, dot: .t3mp3st, pkg: t3mp3st}
+  structural: {role_n: 0, ns_n: [2, 20]}
+
+- harness: xalgorix
+  population: pentest
+  notes: >
+    synthesis.md:268,274. `ns: XALGORIX` REMOVED: config lives in the dotfile
+    ~/.xalgorix.env (README.md:206-207,229), not in environ, and the harness
+    refuses to start without it -- so the variables exist but may never be
+    exported. What is reliably observable is the dotfile itself, and the Go
+    module path.
+
+    optimization session (2026-07-23): `dot: .xalgorix.env` CORRECTED to
+    `.xalgorix` -- dotfile_family()'s regex previously matched a dot-file's
+    WHOLE name (stopping only at '/' or end of string), so a single dot-file
+    like `.xalgorix.env` keyed as the literal string `.xalgorix.env`. Fixing
+    that same regex to fold multi-extension dot-files to their leading token
+    (the aider fix, FIXTURES.md "four ways the dotdir probe misses" #4) is a
+    GLOBAL, shared change -- it also changes what a single dot-file yields,
+    turning `.xalgorix.env` into `.xalgorix`. This signature silently broke
+    (xalgorix HIT -> ABSTAIN) until caught by the before/after fixture diff
+    this session's regression check ran specifically to catch this class of
+    problem.
+  literal: {dot: .xalgorix, pkg: github.com/xalgord/xalgorix/v4}
+  structural: {ns_n: [0, 2]}
+
+- harness: AIRecong
+  population: pentest
+  notes: >
+    synthesis.md:250,274. CORRECTED from source: `ns: AIRECON` and `prov:
+    [OLLAMA]` REMOVED -- proxy/docker.py:153-167 passes NO `-e` to `docker run`
+    at all, so every AIRECON_* var (logger.py:8; proxy/config.py:335,956,1364,1613)
+    is orchestrator-side and none reaches the worker. The container is weakly
+    isolated (`--network host`, host bind-mount) but the env channel is empty --
+    isolation posture and env-observability are independent axes.
+  literal: {pkg: airecon}
+  structural: {ns_n: [0, 1], dens: [1, 8]}
+
+- harness: METATRON
+  population: pentest
+  notes: >
+    synthesis.md:254. CORRECTED from source: `prov: [OLLAMA]` and `ns_n: [1,20]`
+    REMOVED -- METATRON sets ZERO env vars (confirmed absence, not a pattern gap;
+    it is constant-driven, llm.py:16 MODEL_NAME="metatron-qwen") and reaches
+    Ollama over plain HTTP (llm.py:71-92), so no OLLAMA_* prefix exists either.
+    Previously NOTHING in this entry could fire: dens==0 forced abstention
+    before scoring. Kept deliberately empty for a while so the abstention was
+    a recorded outcome rather than a missing-entry accident -- same role the
+    PentAGI entry plays, but for the OPPOSITE architecture (co-located, not
+    separated). See fixtures/METATRON.default.yaml.
+
+    optimization session (2026-07-23): `cwd: metatron` ADDED -- the cwd is
+    `/root/METATRON/` itself, containing `metatron.py` alongside it (a
+    2-member same-prefixed family: the dir name and the entry-point file),
+    which the env/dotdir/package channels this study already used cannot see
+    at all (there is no env footprint, home dotdir or package to read: it is
+    constant-driven, not config-driven). `_family()` now lets a cwd family of
+    >=2 override the dens<=2 separated-worker check, so this entry stops
+    being permanently unreachable. `ns_n: 0`, `role_n: 0` and `dens: [1, 6]`
+    ADDED too -- all three already established as true for this fixture
+    earlier in this same file's notes (zero env vars, no role-named model
+    vars); cwd alone scored 0.40, just under the 0.45 floor, and these are
+    real corroborating facts rather than invented ones.
+  literal: {cwd: metatron}
+  structural: {ns_n: 0, role_n: 0, dens: [1, 6]}
+
+- harness: EVA
+  population: pentest
+  notes: >
+    Source-grounded, new: pyproject.toml:6-8 declares name "eva-exploit"
+    (version 3.5, "Exploit Vector Agent"). Configuration is a Python file, not
+    env (config.py:20-26), so there is no namespace and no provider prefix; the
+    state dir is `~/EVA_data/` (config.py:30-36), which has no leading dot and
+    is therefore invisible to dotfile_family(). The package name is the only
+    thing left, and it is enough.
+  literal: {pkg: eva-exploit}
+  structural: {ns_n: 0, role_n: 0}
+
+- harness: RedAmon
+  population: pentest
+  notes: >
+    synthesis.md:224,284. RESOLVES FIXTURES.md discrepancy 1: the extractor's
+    KB(11) is the KNOWLEDGE-BASE subsystem prefix (README.md:300-303), not a
+    harness namespace, so synthesis's "no recurring prefix" claim stands and the
+    extractor is not wrong -- it simply cannot tell a subsystem family from a
+    harness family. Deliberately thin; the tool footprint (.ngrok/.amass/.msf4)
+    is third-party, not harness-owned, so it is NOT encoded here.
+
+    ROLE_N REMOVED 2026-07-23, and this entry is now deliberately UNSATISFIABLE
+    on its own. Adding `role_n: 0` took this signature's score on an ordinary
+    developer laptop (NEGATIVE.devbox) from 0.20 to 0.44 against a 0.45 floor --
+    one hundredth from a false positive -- because every predicate here is an
+    ABSENCE ("no namespace", "some density", "no role-named model vars") and an
+    empty machine satisfies all of them. The specificity guard in inference.py
+    now blocks this class outright, so what remains is honest: RedAmon is not
+    identifiable through any channel the published recipe transmits. It IS
+    identifiable from its cwd (`/root/redamon/`, `redamon.db`) -- see the
+    transmit-cwd-paths fix in report.md 3.3.
+
+    optimization session (2026-07-23): `cwd: redamon` ADDED, closing that gap
+    -- the cwd dir itself (`/root/redamon`) plus `redamon.db` inside it form a
+    2-member family cwd_family() now folds. `_family()`'s dens<=2 override no
+    longer forces abstention once cwd_n clears 2, so this signature is finally
+    reachable -- previously it scored 0.44 against a 0.45 floor and never got
+    past the family gate at all.
+  literal: {cwd: redamon}
+  structural: {ns_n: [0, 2], dens: [2, 40]}
+
+- harness: DarkMoon
+  population: pentest
+  notes: >
+    synthesis.md:234,236. `ns: DM` ADDED from source -- DM_MODE
+    (docker-compose.yml:14) and DM_MCP_HOME (Dockerfile.opencode:69) are both
+    written into the worker, a genuine 2-member write-population, and they are
+    the ONLY things that say DarkMoon. Everything else in the worker says
+    opencode, because DarkMoon is a fork of it (Dockerfile.opencode:15) whose
+    four patched files are all human-facing rendering surfaces (:22-34) -- the
+    binary, the dotdir and the upstream env markers are untouched. `bins:
+    [opencode]` is therefore CORRECT evidence, not contamination.
+  literal: {ns: DM, bins: [opencode]}
+  structural: {ns_n: [2, 4]}
+
+- harness: PentestGPT
+  population: pentest
+  notes: >
+    synthesis.md:234,250,257. CORRECTED from source: `flags:
+    ["--dangerously-skip-permissions"]` REMOVED -- permission_mode
+    "bypassPermissions" is the SDK-options default (pentestgpt/core/config.py:58-59)
+    and travels through ClaudeAgentOptions (core/backend.py:123-129), never
+    argv, so no autonomy flag is observable. Added the package name
+    (pyproject.toml:2) and the `ccr` router daemon (scripts/entrypoint.sh:56),
+    which are what actually distinguish this from bare claude_code.
+    STILL LOSES to claude_code on this fixture -- see FIXTURES.md.
+  literal: {pkg: pentestgpt, bins: [claude, ccr]}
+  structural: {dot_n: [4, 20], prov: [ANTHROPIC]}
+
+- harness: nebula
+  population: pentest
+  notes: >
+    synthesis.md:237,267. The harness name IS in the worker env -- PS1="nebula> "
+    (src/nebula/terminal_emulator.py:736,761) -- but in the VALUE of a
+    generic-named variable, which no probe reads. Sixth env-channel failure mode
+    and the one with the cheapest fix (scan values, not just names). Until then
+    only the package identifies it.
+
+    optimization session (2026-07-23): `valtok: [nebula]` ADDED now that
+    env_value_tokens() reads PS1. Redundant with `pkg` for THIS grabber (both
+    already hit), but it is a genuinely cheaper, env-only channel -- it is the
+    one that lets `env-only`/`tiered` identify nebula without ever reading
+    package metadata.
+  literal: {pkg: nebula-ai, valtok: [nebula]}
+  structural: {ns_n: [0, 1], role_n: 0}
+
+- harness: Decepticon
+  population: pentest
+  notes: >
+    synthesis.md:237,250,257,267. The study's most hardened worker (cap_drop ALL
+    + selective re-add, no-new-privileges, private sandbox-net --
+    docker-compose.yml:208-223) and still fully identifiable: the compose file
+    hands it NEO4J_* and GHIDRA_* (:224-236), and NEO4J_PASSWORD defaults to the
+    literal `decepticon-graph`. Note env_namespace() returns NEO4J, a
+    supporting-SERVICE prefix -- DECEPTICON_* is zero in the worker -- so `ns`
+    must not be asserted. Hardening and observability are independent.
+
+    optimization session (2026-07-23): `valtok: [decepticon]` ADDED --
+    env_value_tokens() now reads `*_PASSWORD` values and finds it directly in
+    NEO4J_PASSWORD=decepticon-graph. This was the wrong-abstain case at 0.44
+    against a 0.45 floor (all-structural evidence, nothing literal); the added
+    literal clears the floor outright rather than needing a threshold nudge.
+  literal: {valtok: [decepticon]}
+  structural: {ns_n: [2, 4], dens: [4, 12], role_n: 0}
+
+- harness: mantis
+  population: pentest
+  notes: >
+    synthesis.md:222, CONFIRMED mechanically: 53 files, ZERO .py/.ts/.go sources.
+    A skill/plugin pack with no executable code, interpreted by whichever coding
+    agent the operator installed -- so the worker is the HOST's and mantis is
+    observable ONLY as `mantis-*` directory names in the working tree. Left
+    deliberately EMPTY: no env, process or package field can be honestly
+    asserted, and the one observable that exists (cwd paths) is computed by
+    probes.summarize() but transmitted by no grabber. The fixture is expected to
+    resolve to its host; see fixtures/mantis.default.yaml.
+
+    optimization session (2026-07-23): `cwd: mantis` ADDED now that a grabber
+    transmits `cwd_family()`'s output (`mantis-architecture`, `mantis-calibrate`,
+    `mantis-chain`, ... all fold to the shared prefix `mantis`). This gives the
+    entry real, non-zero evidence for the first time -- but it deliberately
+    STILL LOSES to claude_code on this fixture under single-label scoring
+    (claude_code's own evidence, e.g. CLAUDECODE/.claude, scores far higher,
+    and correctly so: claude_code really is what is running). Left OUT of
+    lineage.COMPOSITION on purpose: unlike PentestGPT->claude_code, mantis
+    does not run a FIXED wrapped tool -- it is interpreted by whichever coding
+    agent the operator has installed -- so the two-label mechanism must not
+    invent a fixed pairing here. This remains an open Cause-A gap; see
+    optimization/report.md.
+  literal: {cwd: mantis}
+
+- harness: aider
+  population: coding_agent
+  notes: >
+    synthesis.md:257,274 -- AIDER_MODEL, argparse auto-prefix; vscode-chat
+    Copilot impersonation. `dot: .aider` previously REMOVED: aider uses
+    dot-FILES with distinct names (.aider.conf.yml, .aider.input.history, ...;
+    args.py:123,129,272,275,299,794), so dotfile_family() used to yield six
+    singleton families and the key `.aider` never appeared. `ns: AIDER` kept
+    but it is an OPERATOR-set family (argparse auto-prefix), not written by
+    aider, so it is present only when the operator exported it.
+
+    optimization session (2026-07-23): `dot: .aider` RE-ADDED -- fixed
+    dotfile_family()'s regex to fold a multi-extension dotfile to its leading
+    token instead of matching the whole filename, so `.aider.conf.yml` /
+    `.aider.model.settings.yml` / `.aider.model.metadata.json` now correctly
+    fold into a 3-member `.aider` family (the project-relative
+    `.aider.input.history` etc. under the cwd are a separate, still-unfolded
+    case -- see `cwd` below). This is a ZERO marginal-byte fix: `dot`/`dot_n`
+    are fields `recipe` already transmits. `cwd: aider` ADDED too as a second,
+    independent channel from the project-relative dotfiles cwd_family() DOES
+    reach (`.aider.chat.history.md` etc. are dot-prefixed, but cwd_family()
+    does not require a leading dot the way dotfile_family() does).
+  literal: {ns: AIDER, pkg: aider-chat, dot: .aider, cwd: aider}
+  structural: {dot_n: [2, 10]}
+
+- harness: goose
+  population: coding_agent
+  notes: >
+    synthesis.md:232,236,252,274,280. CORRECTED from source: `disc_k: AGENT`
+    REMOVED -- the developer shell sets AGENT_SESSION_ID (shell.rs:698), not
+    AGENT; `AGENT=goose` fires only on the retry/hook path (retry.rs:240,246).
+    AGENT_SESSION_ID matches no branch of self_disclosure_marker(), so disc_k is
+    None. `ns: GOOSE` is an OPERATOR-set config family, not written by goose.
+  literal: {ns: GOOSE}
+  structural: {role_n: 0}
+
+- harness: crush
+  population: coding_agent
+  notes: >
+    synthesis.md:232,279. CORRECTED from source: `disc_k: AGENT` and
+    `disc: true` REMOVED -- crush sets CRUSH=1, AGENT=crush, AI_AGENT=crush
+    (internal/shell/shell.go:44-49) but probes.self_disclosure_marker() matches
+    NONE of them (unknown suffix on CRUSH; non-boolean value on the other two),
+    so disc_k is None here and asserting it guarantees a mismatch. The data dir
+    is project-relative `.crush` (internal/config/config.go:23-24), not a home
+    dotdir, so `dot` is unusable too. What is left is the Go module path.
+  literal: {pkg: github.com/charmbracelet/crush}
+  structural: {ns_n: [0, 1], role_n: 0}
+
+- harness: gemini-cli
+  population: coding_agent
+  notes: >
+    synthesis.md:232,235,255,274,281 -- GEMINI_CLI=1, GEMINI_MODEL, model-in-UA,
+    opt-in sandbox, <image>-<hex> hostname. `ns: GEMINI` REMOVED: the harness DOES
+    set >=2 GEMINI_* vars into the worker, but GEMINI is in probes.PROVIDER_PREFIXES,
+    so `env_namespace()` can never return it. The entry could only ever mismatch.
+    `dot: .gemini` (packages/core/src/utils/paths.ts:13 GEMINI_DIR) and `pkg`
+    (package.json:2) ADDED: with only disc_k+prov the entry's max weight was 0.43,
+    which the inference module's evidence-tempering caps at 0.57 -- close enough
+    for a generic structural signature (continue's) to land inside the margin
+    floor and force an abstention. A thin signature is not merely weak, it is
+    beatable by noise.
+  literal: {disc_k: GEMINI_CLI, dot: .gemini, pkg: "@google/gemini-cli"}
+  structural: {disc: true, prov: [GEMINI], dot_n: [6, 40]}
+
+- harness: qwen-code
+  population: coding_agent
+  notes: "synthesis.md:224,232,256,261,283 -- QWEN_CODE=1, QWEN_MODEL, ~/.qwen, git-notes ai-attribution, conditional Claude Code impersonation. FORK of gemini-cli."
+  literal: {ns: QWEN, dot: .qwen, disc_k: QWEN_CODE}
+  structural: {disc: true, hasvcs: true}
+
+- harness: claude_code
+  population: coding_agent
+  notes: >
+    synthesis.md:224,226,232,238,260. `ns: CLAUDE` and `ns_n: [20,400]` REMOVED
+    per the ns rule above -- the 229 CLAUDE_* names are a READ-population spread
+    over the repo; the worker gets exactly one (CLAUDE_CODE_ENTRYPOINT,
+    src/main.tsx:539) plus the separately-prefixed CLAUDECODE=1
+    (src/utils/Shell.ts:321). The dense `~/.claude/` tree, and the
+    `shell-snapshots/snapshot-<shell>-<ts>-<id>.sh` file in particular
+    (src/utils/bash/ShellSnapshot.ts:439-444), carry the weight instead.
+  literal: {dot: .claude, disc_k: CLAUDECODE}
+  structural: {disc: true, prov: [ANTHROPIC], dot_n: [6, 60]}
+
+- harness: openclaw
+  population: coding_agent
+  notes: >
+    synthesis.md:224,232,252,257. CORRECTED from source: `ns: OPENCLAW` and
+    `ns_n: [50,1000]` REMOVED -- the write-population is ONE
+    (OPENCLAW_CLI=1, src/infra/openclaw-exec-env.ts:2,5,14), below
+    env_namespace()'s >=2 bar, so ns is None and the range could only mismatch.
+    773 is a read/textual population and overstates worker-observability by
+    ~3 orders of magnitude. `dot: .openclaw` ADDED
+    (src/infra/terminal-file-upload.ts:31, ~/.openclaw/tmp).
+  literal: {disc_k: OPENCLAW_CLI, dot: .openclaw, pkg: openclaw}
+  structural: {disc: true, ns_n: [0, 3]}
+
+- harness: opencode
+  population: coding_agent
+  notes: >
+    synthesis.md:224,226,232,236. CORRECTED from source: worker-side the
+    OPENCODE_* family is TWO (OPENCODE, OPENCODE_PID -- index.ts:75-77), not
+    5-60; the 54 the extractor found are READ-only feature flags
+    (packages/core/src/flag/flag.ts:19-37). `disc_k` resolves to AGENT, not
+    OPENCODE, because sorted() reaches AGENT first -- and AGENT is a shared
+    convention (crush, goose), so it cannot separate on its own. `dot` REMOVED:
+    global.ts:11-15 uses the XDG five-dir spread, so there is no ~/.opencode for
+    dotfile_family() to find.
+  literal: {ns: OPENCODE, disc_k: AGENT}
+  structural: {ns_n: [2, 6], disc: true}
+
+- harness: codex
+  population: coding_agent
+  notes: "synthesis.md:135,243,285 -- CODEX_HOME, apply_patch marker family, default-on per-command OS sandbox; NO model env var"
+  literal: {ns: CODEX, dot: .codex}
+  structural: {ns_n: [3, 40], role_n: 0}
+
+- harness: cline
+  population: coding_agent
+  notes: >
+    synthesis.md:252,266,282. `ns: CLINE` REMOVED per the ns rule above: the
+    VS Code terminal gets exactly one harness variable, CLINE_ACTIVE=true
+    (apps/vscode/src/hosts/vscode/terminal/VscodeTerminalRegistry.ts:28-29).
+    Package metadata is `claude-dev` (apps/vscode/package.json:2), which names
+    neither cline nor an ancestor -- recorded so a `claude-dev` sighting is not
+    mistaken for Claude Code. ANCESTOR of roo-code.
+  literal: {dot: .cline, disc_k: CLINE_ACTIVE, pkg: claude-dev}
+  structural: {disc: true, role_n: 0}
+
+- harness: roo-code
+  population: coding_agent
+  notes: >
+    synthesis.md:233,257,277. `ns: ROO` REMOVED per the ns rule above: only
+    ROO_ACTIVE is set by default (src/integrations/terminal/Terminal.ts:155);
+    ROO_ZDOTDIR appears only under zsh with a pre-existing ZDOTDIR. Package
+    metadata is `roo-cline` (src/package.json:2) -- it names the ANCESTOR, so
+    `pkg` is deliberately NOT used to separate this pair. FORK of cline.
+  literal: {dot: .roo, disc_k: ROO_ACTIVE}
+  structural: {disc: true, role_n: 0}
+
+- harness: OpenHands
+  population: coding_agent
+  notes: >
+    synthesis.md:224,226,250 -- OH_*/OPENVSCODE_SERVER_*, default-on Docker,
+    LLM call INSIDE the worker, native ACP mode. `dot: .openhands` REMOVED:
+    `.openhands/` is a PROJECT-local convention (it sits at /workspace/.openhands
+    in the worker), not a home dotdir, so dotfile_family() -- which matches only
+    directly under $HOME -- returns whatever generic dir is there instead and the
+    literal mismatches. Same class as opencode's XDG spread and crush's
+    project-relative data dir. The OH_* write-population is real and large enough
+    to carry this on its own (5 vars, from the initial_env list enumerated at
+    openhands/app_server/constants.py:44-60).
+  literal: {ns: OH, pkg: openhands-ai}
+  structural: {ns_n: [3, 30]}
+
+- harness: continue
+  population: coding_agent
+  notes: >
+    synthesis.md:147,270,285. `dot: .continue` ADDED (core/util/paths.ts:35,69-70):
+    it is the only thing that identifies this harness at all. continue's entire
+    env contribution is getColorEnv() (runTerminalCommand.ts:91-99) -- five
+    colour variables, none naming it -- and CLICOLOR+CLICOLOR_FORCE make
+    env_namespace() return a spurious CLICOLOR(2), so no `ns` may be asserted.
+  literal: {dot: .continue}
+  structural: {ns_n: [0, 4], role_n: 0, dot_n: [4, 20]}
+
+- harness: Pentest-Swarm-AI
+  population: pentest
+  notes: >
+    Source-grounded, new. cli/playbook.go:52-54, cli/ctf.go:42-44 and
+    cli/serve.go:27-29 all read PENTESTSWARM_ORCHESTRATOR_API_KEY and FALL BACK
+    to a bare ANTHROPIC_API_KEY, so the harness-prefixed variable is optional and
+    the common configuration leaves no harness namespace in the worker at all.
+    The Go module path is the reliable identifier -- and unlike Artemis,
+    roo-code, cline and DarkMoon, it names the tool correctly.
+  literal: {pkg: github.com/Armur-Ai/Pentest-Swarm-AI, dot: .pentestswarm}
+  structural: {ns_n: [0, 2], prov: [ANTHROPIC]}
+
+- harness: oh-my-open-pentest
+  population: pentest
+  notes: >
+    Source-grounded, new. A multi-host plugin pack, not an executor: it configures
+    OpenCode/Codex and lets them run the commands, so the worker is the HOST's.
+    Its own footprint is the project-local `.omop/` (with .omop/rules/ tracked,
+    .gitignore:2-5), `.omo/` (:64), OMOP_DISABLE_POSTHOG (test-setup.ts:65) and
+    package.json:2-3. EXPECTED to lose to `opencode` on its own fixture: the
+    third instance of the wrapper/wrapped single-label limit after PentestGPT and
+    mantis. `bins: [opencode]` is CORRECT evidence, not contamination.
+  literal: {pkg: oh-my-open-pentest, bins: [opencode]}
+  structural: {ns_n: [0, 3]}

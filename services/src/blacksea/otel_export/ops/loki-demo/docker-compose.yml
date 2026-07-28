@@ -1,0 +1,46 @@
+# Blacksea → OTLP → Loki → Grafana demo stack.
+#
+# A self-contained sink for the Blacksea OTLP emitter: an OpenTelemetry Collector that
+# forwards to Grafana Loki, with Grafana pre-wired to query it. Bring it up, point the
+# emitter at the Collector (http://localhost:4418), and Blacksea hits land in Loki.
+#
+#   docker compose up -d
+#   # then, from services/:
+#   blacksea otel run   (configure with `blacksea otel config set BS_OTEL_ENABLED=1 BS_OTEL_ENDPOINT=http://localhost:4418`)
+#
+# Grafana:   http://localhost:3000   (anonymous admin; query {service_name="blacksea-brain"})
+# Loki API:  http://localhost:3100
+# Collector: OTLP/HTTP on :4418, OTLP/gRPC on :4417 (host)
+#
+# Versions are pinned for reproducibility — bump them deliberately.
+
+services:
+  loki:
+    image: grafana/loki:3.3.2
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4418:4318"   # OTLP/HTTP — BS_OTEL_ENDPOINT=http://localhost:4418
+      - "4417:4317"   # OTLP/gRPC
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./grafana-datasource.yaml:/etc/grafana/provisioning/datasources/loki.yaml:ro
+    depends_on:
+      - loki

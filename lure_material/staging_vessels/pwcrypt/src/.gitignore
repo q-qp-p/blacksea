@@ -1,0 +1,14 @@
+# build outputs (setup.sh/Makefile leave these in-tree; never commit them)
+*.o
+pwcrypt
+pwcrypt_linux_amd64
+pwcrypt_linux_arm64
+pwcrypt_macos
+pwcrypt_macos_x86_64
+pwcrypt_macos_arm64
+to_test/
+__pycache__/
+
+# cached static-openssl builds (see setup.sh's build_static_openssl) — rebuildable from
+# the vendored source in vendor/openssl, never commit the built .a/.h output
+.openssl-cache/

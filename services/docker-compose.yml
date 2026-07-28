@@ -1,0 +1,46 @@
+# Local docker-mode infra (BS_INFRA=docker). Credentials + coordinates come from config/blacksea.env
+# (written by `make init`); there is no credential default — the ${VAR:?...} form makes compose
+# hard-fail if it is missing. Always invoke via `blacksea up` (which passes
+# --env-file config/blacksea.env) or with `--env-file config/blacksea.env`.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-blacksea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run 'make init' first}
+      POSTGRES_DB: ${POSTGRES_DB:-blacksea}
+      # Force password (SCRAM) auth for host/TCP connections; no trust fallback.
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-blacksea} -d ${POSTGRES_DB:-blacksea}"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  nats:
+    image: nats:2
+    # Config file enables JetStream + monitoring (8222) and requires a username/password.
+    # $NATS_PASS is expanded inside the container from the env var passed below.
+    # Mount the parent directory (not the file directly) — macOS Docker Desktop returns
+    # EDEADLK ("resource deadlock avoided") on single-file bind mounts.
+    command: ["-c", "/nats-config/nats-server.conf"]
+    environment:
+      NATS_PASS: ${NATS_PASS:?run 'make init' first}
+      # Server-level disk backstop. Env-overridable so it can be raised in lockstep with
+      # NATS_MAX_BYTES — it MUST stay above the per-stream cap, or stream provisioning fails and the
+      # edge exits. Default 4GB gives the 1 GiB default stream cap 4× headroom.
+      NATS_MAX_FILE_STORE: ${NATS_MAX_FILE_STORE:-4GB}
+    volumes:
+      - ./scripts:/nats-config:ro
+      - nats_data:/data
+    ports:
+      - "4222:4222"   # client
+      - "8222:8222"   # monitoring (curl http://localhost:8222/healthz)
+
+volumes:
+  pg_data:
+  nats_data:

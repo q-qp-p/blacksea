@@ -1,0 +1,81 @@
+## Bootstrap starter manifest — see ../../setup_a_bait.md for the full walkthrough.
+##
+## Copy this whole directory to start your own bait: rename the directory, change
+## `bait_id`, and repoint `deploy.callbacks.https` at your real edge address. Everything
+## else can stay as-is for a first end-to-end run.
+
+bait_id: agent-fp-demo
+version: "1.0.0"
+description: >
+  Bootstrap example for docs/setup_a_bait.md: pairs Blacksea's flagship agent_fp
+  payload/listener with the pwcrypt RCE staging vessel instead of a plain file drop.
+  The "attacker" finds one of three pwcrypt binaries (linux-amd64/linux-arm64/macos,
+  whichever matches their machine) + a shared secrets/*.pwc vault + shell history;
+  running `pwcrypt_<platform> decrypt secrets/github.pwc 'hunter2'` triggers an
+  out-of-bounds BSS write RCE that executes the embedded agent_fp payload, which
+  collects a harness fingerprint from whatever process ran it and reports it home.
+  Not grounded in observed attacker behavior — for learning the pipeline only.
+  Change bait_id and the deploy callback before pointing this at anything you'd call
+  a real deployment.
+
+assurance_tier: 2          # tier-2: encrypted HTTPS body (HMAC-SHA256 AEAD)
+deploy_class: portable_artifact
+isolation_class: in_process
+test: true                 # bootstrap/example bait — not real intel; flagged in registry + observer
+
+channels:
+  https: {}
+
+envelope_version: 1
+
+# payload/listener/vessel are cataloged in lure_material/ (repo root, sibling of services/),
+# not copied locally — see lure_material/README.md and docs/bait-authoring.md §2. This
+# directory (docs/examples/<name>/) sits at the same depth as services/e2e_tests/<name>/,
+# so it uses the same three "../" segments.
+listener_class: ../../../lure_material/payloads/agent_fp/listener.AgentFingerprintListener
+payload_file: ../../../lure_material/payloads/agent_fp/payload.py
+staging_vessel: ../../../lure_material/staging_vessels/pwcrypt
+
+# listener.py loads this sibling YAML knowledge base at construction — must be frozen
+# alongside the module itself, see services/src/blacksea/control_plane/listeners.py.
+listener_data_files:
+  - signatures.yaml
+
+# Constants the factory injects into payload.py before bundling.
+build_vars:
+  - _SERVER_URL      # edge HTTPS callback URL — see deploy.callbacks.https below
+  - _TOKEN           # hex-encoded instance_token (8 bytes) — auto-generated at build time
+  - _KEY             # hex-encoded HMAC-SHA256 master key (32 bytes raw) — injected; never stored
+
+# Deploy-time parameters — makes this manifest self-sufficient for `blacksea forge`
+# (register → build → approve in one call). CLI flags (--campaign/--callback/--set)
+# override these for a one-off test without editing the file.
+deploy:
+  campaign: demo-agent-fp
+  callbacks:
+    # Local dev default (matches `blacksea up`'s dev edge). For anything beyond your
+    # own machine, replace with the edge's real, network-reachable address, e.g.
+    # https://edge.example.com:8443 — this is the one field every new deployment
+    # must change; see docs/setup_a_bait.md's "server address" section.
+    https: http://127.0.0.1:8443
+  # approve: true            # default; set false (or pass --no-approve) to stop at "pending"
+
+provenance:
+  behavior: >
+    Bootstrap example only — not grounded in an observed attacker behavior. Written to
+    give a new operator a self-sufficient manifest to forge and place, per
+    docs/setup_a_bait.md. Not for live deployment as-is.
+  source: docs/examples/agent_fp_pwcrypt_demo/
+  observed_date: "2026-07-23"
+
+retention_days: 7
+
+build:
+  toolchain: python3.11
+  # Deliberately omitted: an empty/missing target_arch means "everything this build host
+  # can produce" (one shared vault works against whichever subset gets built — all 4
+  # standard values are supported: x86_64-linux, aarch64-linux, x86_64-darwin,
+  # arm64-darwin). To restrict this to specific binaries instead — say, if you know the
+  # target is a Linux arm64 box — list just what you want, e.g. `target_arch: [aarch64-linux]`
+  # (requesting a darwin value on a non-Darwin build host is a hard build failure, not a
+  # skip). See lure_material/staging_vessels/pwcrypt/setup.sh.

@@ -1,0 +1,35 @@
+# OpenTelemetry Collector config for the Blacksea → Loki demo.
+#
+# Receives OTLP from the Blacksea emitter and forwards it to Loki's native OTLP
+# endpoint. Loki 3.x ingests OTLP directly at /otlp/v1/logs — the otlphttp exporter
+# appends the /v1/logs path to the configured endpoint. The `debug` exporter also
+# echoes each record to the Collector's stdout so you can watch it arrive.
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318   # the emitter posts here (mapped to host :4418 in compose)
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch: {}
+
+exporters:
+  # Loki's native OTLP receiver. `loki` resolves to the Loki container on the compose
+  # network. Resource attributes Loki promotes to labels (service.name → service_name)
+  # become index labels; the rest ride as structured metadata.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+  # Echo to the Collector's stdout (docker compose logs otel-collector) for a live view.
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/loki, debug]

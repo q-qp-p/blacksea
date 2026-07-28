@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# AI assistant working files — internal, not part of the public project.
+# Note: each module's context.md is NOT excluded. Those are the living specification for their
+# module (wire formats, contracts, invariants) and the shipped code/docs cite them directly.
+# Nothing tracked here may cite a CLAUDE.md: the pointer would dangle for every reader.
+CLAUDE.md
+.claude/
+
+# Vendored OpenSSL source tree used by lure_material/staging_vessels/pwcrypt.
+# ~45 MB / 3.3k files; fetch it separately before running pwcrypt's setup.sh.
+lure_material/staging_vessels/pwcrypt/src/vendor/openssl/

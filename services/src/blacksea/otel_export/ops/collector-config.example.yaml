@@ -1,0 +1,71 @@
+# Sample OpenTelemetry Collector config for Blacksea's OTLP emitter.
+#
+# This is OPS MATERIAL, not a shipped component (D5): Blacksea emits OTLP to ONE
+# endpoint and never learns which SIEM you use — the Collector owns routing, fan-out,
+# filtering, and redaction, and you can swap sinks without touching Blacksea.
+#
+# Run it (Docker):
+#   docker run --rm -p 4318:4318 -p 4317:4317 \
+#     -v "$PWD/collector-config.example.yaml:/etc/otelcol-contrib/config.yaml" \
+#     otel/opentelemetry-collector-contrib:latest
+#
+# Then point the emitter at it and turn it on:
+#   BS_OTEL_ENABLED=1 \
+#   BS_OTEL_ENDPOINT=http://localhost:4318 \
+#   POSTGRES_DSN='host=localhost port=5432 dbname=blacksea user=blacksea password=…' \
+#   python -m blacksea.otel_export
+#
+# (For HTTP the emitter appends the signal path, so BS_OTEL_ENDPOINT is the base URL —
+#  http://localhost:4318 — and it posts to http://localhost:4318/v1/logs.)
+
+receivers:
+  otlp:
+    protocols:
+      http:            # matches BS_OTEL_PROTOCOL=http/protobuf (default) on :4318
+        endpoint: 0.0.0.0:4318
+      grpc:            # matches BS_OTEL_PROTOCOL=grpc on :4317
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch: {}
+  # Event filtering is the COLLECTOR's job, not a knob in the emitter (§7). Example:
+  # forward only medium+ caution to a paging sink. (Uncomment + add to a pipeline.)
+  # filter/high_caution:
+  #   logs:
+  #     log_record:
+  #       - 'attributes["blacksea.caution_level"] == "low"'
+  #       - 'attributes["blacksea.caution_level"] == nil'
+
+exporters:
+  # For local testing — dump every received log record to the Collector's stdout.
+  debug:
+    verbosity: detailed
+
+  # ── Real sinks (uncomment + configure the one(s) you use) ──────────────────────
+  # Splunk HEC:
+  # splunk_hec/logs:
+  #   token: "${SPLUNK_HEC_TOKEN}"
+  #   endpoint: "https://splunk.example.com:8088/services/collector"
+  #   source: "blacksea"
+  #
+  # Elastic / OpenSearch via OTLP-capable APM, or elasticsearch exporter:
+  # elasticsearch/logs:
+  #   endpoints: ["https://elastic.example.com:9200"]
+  #   logs_index: "blacksea-hits"
+  #
+  # Grafana Loki (OTLP-native as of recent Loki):
+  # otlphttp/loki:
+  #   endpoint: "https://loki.example.com/otlp"
+  #
+  # Anything OTLP-native (Datadog agent, Sentinel via AMA, Chronicle forwarder, …):
+  # otlphttp/siem:
+  #   endpoint: "https://otlp.your-siem.example.com"
+  #   headers:
+  #     authorization: "Bearer ${SIEM_TOKEN}"
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]          # add your real sink(s) here, e.g. [debug, splunk_hec/logs]

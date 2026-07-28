@@ -1,0 +1,65 @@
+bait_id: agent-fp
+version: "1.0.0"
+description: >
+  Collects a minimal 9-field harness fingerprint (env namespace, self-disclosure
+  marker, hostname literal, cwd family, package manifest name, env-value tokens,
+  child-process binaries, model string) from the attacker's worker and POSTs it,
+  encrypted, to the edge. The brain-side listener runs a deterministic,
+  abstention-capable RuleInference engine over the wire-format JSON against a
+  32-harness signature knowledge base (CAI, STRIX, claude_code, opencode, aider,
+  ...) to attribute which agent harness is driving the worker. Not grounded in
+  observed attacker behavior — for development and testing only.
+
+assurance_tier: 2          # tier-2: encrypted HTTPS body (HMAC-SHA256 AEAD)
+deploy_class: portable_artifact
+isolation_class: in_process
+test: true                 # example bait — not real intel; flagged in the registry + observer
+
+channels:
+  https: {}
+
+envelope_version: 1
+
+# payload/listener/vessel are cataloged in lure_material/ (repo root, sibling of services/),
+# not copied locally — see lure_material/README.md. Resolved by the factory/ingestion/brain
+# pool via plain os.path.join(bait_dir, <this path>), so a "../"-relative path out of this
+# bait's directory works with no code changes; there is no named-reference lookup (yet).
+listener_class: ../../../lure_material/payloads/agent_fp/listener.AgentFingerprintListener
+payload_file: ../../../lure_material/payloads/agent_fp/payload.py
+staging_vessel: ../../../lure_material/staging_vessels/identity
+
+# listener.py loads this sibling YAML knowledge base at construction
+# (Path(__file__).parent / "signatures.yaml") — must be frozen alongside the module
+# itself (see src/blacksea/control_plane/listeners.py's closure-scope contract) or the
+# brain-side frozen copy fails to import.
+listener_data_files:
+  - signatures.yaml
+
+# Constants the factory injects into payload.py before bundling.
+build_vars:
+  - _SERVER_URL      # edge HTTPS callback URL, e.g. "http://cb.example.com:8443"
+  - _TOKEN           # hex-encoded instance_token (8 bytes)
+  - _KEY             # hex-encoded HMAC-SHA256 master key (32 bytes raw) — injected; never stored
+
+# Deploy-time parameters — makes this manifest self-sufficient for `forge`
+# (register → build → approve in one call). CLI flags (--campaign/--callback/--set)
+# override these for local testing; e2e_test.sh repoints https at 127.0.0.1 this way.
+deploy:
+  campaign: example-agent-fp
+  callbacks:
+    https: http://127.0.0.1:8443   # one address per declared channel above
+  # approve: true                  # default; set false to stop at a pending instance
+
+provenance:
+  behavior: >
+    Example only — not grounded in an observed attacker behavior. Not for
+    live deployment.
+  source: services/e2e_tests/agent_fp/
+  observed_date: "2026-07-23"
+
+retention_days: 7
+
+build:
+  toolchain: python3.11
+  target_arch:
+    - x86_64-linux

@@ -1,0 +1,52 @@
+# generated infrastructure secrets (postgres + nats credentials) — never commit
+secrets/
+
+# unified runtime config (BS_INFRA + backing-service coordinates + credentials) —
+# written by `make init` (or the hidden `blacksea init`); holds credentials, never commit
+config/blacksea.env
+config/*.env
+
+# virtualenv
+.venv/
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# packaging
+*.egg-info/
+dist/
+build/
+
+# test caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# compiled extensions — *.so is ignored globally...
+*.so
+# ...except the bundler C-ext test fixture (intentionally tracked)
+!tests/sdk/bundler/fixtures/cext/**/*.so
+
+# Go build outputs (edge module, now at ./edge)
+edge/edge
+edge/bin/
+edge/*.test
+edge/vendor/
+
+# control-plane runtime state when the CLI is run from the repo root
+# (registry = source of truth on disk; key directory = its published projection)
+registry/
+keydir.json
+snapshot.json
+snapshot.json.seq
+# brain's own key directory — holds live per-instance _KEY material; never commit
+brain_keydir.json
+brain_keydir.json.seq
+
+# macOS
+.DS_Store
+
+# `make dev` runtime state (pid files + logs for backgrounded edge/brain/observer)
+.dev/

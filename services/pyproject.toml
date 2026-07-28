@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Blacksea is ONE installable distribution. `pip install -e .` from this directory
+# makes every `blacksea.*` package importable (sdk, bundler, brain, control_plane,
+# observer, correlation, otel_export, config, console) and installs the operator
+# console-script — with no PYTHONPATH export and no launcher shim. The Go edge is a
+# separate module under ./edge and is built with `go build`, not installed here.
+#
+# History: each module used to be its own distribution under blacksea/<mod>/blacksea/<mod>/,
+# reachable only via an 8-root PYTHONPATH + a generated `blacksea` launcher. That layout was
+# retired for this single src/ tree — see the flatten refactor.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[project]
+name = "blacksea"
+version = "0.1.0"
+description = "Blacksea honeypot control system — SDK + payload bundler, brain, control plane, correlation read layer, observer, OTLP export, and the operator console."
+requires-python = ">=3.11"
+dependencies = [
+    # Storage + queue — shared across brain / control_plane / observer / correlation / otel / console.
+    "psycopg[binary]>=3.1",
+    "pyyaml>=6",
+    "nats-py>=2.6",
+    # Observer read-only web UI.
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.29",
+    # Operator console (blacksea CLI).
+    "click>=8.1",
+    "rich>=13",
+    # OTLP telemetry emitter. http/protobuf is the default transport; grpc is an extra below.
+    "opentelemetry-sdk>=1.43",
+    "opentelemetry-exporter-otlp-proto-http>=1.43",
+]
+
+[project.optional-dependencies]
+# Payload minification for the bundler (blacksea.bundler) — optional; bundling works without it.
+minify = ["python-minifier>=2.9"]
+# gRPC OTLP transport (BS_OTEL_PROTOCOL=grpc). http/protobuf (default) needs nothing extra.
+otlp-grpc = ["opentelemetry-exporter-otlp-proto-grpc>=1.43"]
+# Test + dev toolchain (pytest + the minifier the bundler tests exercise).
+dev = ["pytest>=7", "python-minifier>=2.9"]
+
+[project.scripts]
+# The bare `blacksea …` operator console and the `bs-bundle` payload bundler CLI.
+blacksea = "blacksea.console.cli:main"
+bs-bundle = "blacksea.bundler.cli:main"
+
+# PEP 420 namespace package: `blacksea` has no __init__.py (kept as-is from the pre-flatten layout,
+# so the bundler's package-vendoring behaviour is unchanged). Only real packages (dirs with an
+# __init__.py) plus the data dirs below live under it.
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["blacksea*"]
+# static/ (observer web assets) and ops/ (otel operator demo configs) are DATA, not import
+# packages — exclude them so `namespaces = true` doesn't vend them as empty namespace packages.
+# static/ still ships via package-data below; ops/ is operator reference and is not packaged.
+exclude = ["blacksea.observer.static*", "blacksea.otel_export.ops*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+# Non-.py files each package reads at runtime via its own __file__.
+"blacksea.brain" = ["schema.sql"]        # storage.py init_schema reads this
+"blacksea.console" = ["banner.txt"]      # cli.py --help banner
+"blacksea.observer" = ["static/*"]       # the served web UI (index.html, assets)
+
+[tool.pytest.ini_options]
+# Anchors rootdir here and lets a bare `pytest` collect everything; the Makefile invokes each
+# suite dir explicitly (per-suite POSTGRES_DSN handling). Default (prepend) import mode is kept so
+# tests/brain/_helpers.py resolves as a bare `from _helpers import …`.
+testpaths = ["tests"]

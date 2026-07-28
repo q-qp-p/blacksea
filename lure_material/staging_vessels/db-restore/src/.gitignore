@@ -1,0 +1,10 @@
+# build outputs — setup.sh builds a host-native monocypher shared library in a scratch dir
+# (never in-tree), but ignore it here in case someone runs the forge tooling by hand.
+monocypher.so
+*.o
+__pycache__/
+*.pyc
+
+# NOTE: `db-restore` (the prebuilt ARM64 Linux binary) is committed *source material*, not a
+# build output — the vessel ships it prebuilt and only forges the backup per build. Do not
+# add it here.

@@ -1,0 +1,10 @@
+# Grafana provisioning: a Loki datasource wired to the demo Loki, so Grafana comes up
+# ready to query Blacksea hits with no manual setup. `loki` resolves on the compose
+# network.
+apiVersion: 1
+datasources:
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: true

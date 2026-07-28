@@ -1,0 +1,50 @@
+bait_id: hostname-probe
+version: "1.0.0"
+description: >
+  Reference/test bait demonstrating the manifest-only authoring model: the
+  payload (DNS beacon), listener (HostnameGrabDNSListener), and staging vessel
+  (identity NOP) are cataloged in lure_material/ and referenced here by path —
+  this directory holds only the manifest. Not a production intel lure — exists
+  to exercise the register/build/stage/interpret loop.
+
+assurance_tier: 0          # tier-0: DNS signal only (no signed body)
+deploy_class: portable_artifact
+isolation_class: in_process
+test: true                 # reference/test bait — not real intel; flagged in the registry + observer
+
+channels:
+  dns: {}
+
+envelope_version: 1
+
+# payload/listener/vessel are cataloged in lure_material/ (repo root, sibling of services/),
+# not copied locally — see lure_material/README.md and docs/bait-authoring.md §2. Resolved
+# by the factory/ingestion/brain pool via plain os.path.join(bait_dir, <this path>), so a
+# "../"-relative path out of this bait's directory works with no code changes.
+listener_class: ../../../../lure_material/payloads/hostname_grab_dns/listener.HostnameGrabDNSListener
+payload_file: ../../../../lure_material/payloads/hostname_grab_dns/payload.py
+staging_vessel: ../../../../lure_material/staging_vessels/identity
+
+# Constants the factory injects into payload.py before bundling.
+# Actual values come from the instance configuration at factory time.
+build_vars:
+  - _ZONE          # DNS callback zone, e.g. "cb.example.com"
+  - _TOKEN         # hex-encoded instance_token
+  - _DNS_SERVER    # "host:port" queried directly via raw UDP, bypassing the OS resolver.
+                   # Local/test only — a real deployment should pass --set _DNS_SERVER=
+                   # (empty) and rely on public DNS delegation of the zone to the edge.
+
+provenance:
+  behavior: >
+    Reference bait only — exercises the manifest-only authoring model and the
+    register/build/stage/interpret loop. Not grounded in an observed attacker
+    behavior and not intended for live deployment.
+  source: services/test_fixtures/baits/hostname_probe/
+  observed_date: "2026-06-08"
+
+retention_days: 7
+
+build:
+  toolchain: python3.11
+  target_arch:
+    - x86_64-linux

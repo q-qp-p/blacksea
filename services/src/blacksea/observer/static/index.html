@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blacksea Observer</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0f1117;
+  --surface:   #161b22;
+  --border:    #30363d;
+  --text:      #e6edf3;
+  --muted:     #7d8590;
+  --accent:    #58a6ff;
+  --green:     #3fb950;
+  --yellow:    #d29922;
+  --red:       #f85149;
+  --purple:    #bc8cff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── header ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+header h1 { font-size: 16px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+#stats-bar { display: flex; gap: 20px; flex-wrap: wrap; }
+.stat { color: var(--muted); font-size: 13px; }
+.stat span { color: var(--text); font-weight: 500; }
+.stat.pg-ok span { color: var(--green); }
+.stat.pg-err span { color: var(--red); }
+
+/* ── nav ── */
+nav {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 10px 16px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── main ── */
+main { padding: 20px 24px; }
+section { display: none; }
+section.active { display: block; }
+
+/* ── filters ── */
+.filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.filters label { color: var(--muted); font-size: 13px; }
+.filters input, .filters select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 5px 10px;
+  outline: none;
+}
+.filters input:focus, .filters select:focus { border-color: var(--accent); }
+.filters input { width: 160px; font-family: monospace; }
+
+.live-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 5px 12px;
+  margin-left: auto;
+}
+.live-btn.on { background: #1a3020; border-color: var(--green); color: var(--green); }
+
+/* ── table ── */
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 600px; }
+th {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+td {
+  border-bottom: 1px solid #21262d;
+  color: var(--text);
+  font-size: 13px;
+  padding: 8px 12px;
+  vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover td { background: #1c2128; }
+tbody tr.expanded td { background: #1a1d26; }
+
+/* ── detail panel ── */
+tr.detail-row td {
+  background: #0d1117;
+  border-bottom: 2px solid var(--accent);
+  padding: 12px 16px;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 24px;
+}
+.detail-field { display: flex; flex-direction: column; gap: 2px; }
+.detail-field .dk { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+.detail-field .dv { color: var(--text); font-family: monospace; font-size: 12px; word-break: break-all; }
+.detail-field .dv.json {
+  background: #161b22;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* ── badges ── */
+.badge {
+  border-radius: 12px;
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.badge-active   { background: #1a3020; color: var(--green); }
+.badge-pending  { background: #2d2200; color: var(--yellow); }
+.badge-burned   { background: #3d1111; color: var(--red); }
+.badge-retired  { background: #1c1c1c; color: var(--muted); }
+.badge-revoked  { background: #3d1111; color: var(--red); }
+.badge-draft    { background: #1a1f2e; color: #79c0ff; }
+.badge-staged   { background: #1a1f2e; color: var(--accent); }
+.badge-deployed { background: #1a3020; color: var(--green); }
+.badge-default  { background: var(--surface); color: var(--muted); }
+.badge-test     { background: #2a1f3d; color: var(--purple); border: 1px solid var(--purple); }
+
+.sig-ok  { color: var(--green); font-weight: 600; }
+.sig-bad { color: var(--red);   font-weight: 600; }
+.orphan  { color: var(--yellow); font-size: 11px; }
+
+/* ── mono helpers ── */
+.mono { font-family: monospace; }
+.token { font-family: monospace; font-size: 12px; color: var(--muted); }
+
+/* ── empty state ── */
+.empty { color: var(--muted); font-size: 13px; padding: 32px 0; text-align: center; }
+
+/* ── spinner ── */
+.spinner { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Blacksea Observer</h1>
+  <div id="stats-bar">
+    <div class="stat" id="s-baits">Baits <span>—</span></div>
+    <div class="stat" id="s-instances">Instances <span>—</span></div>
+    <div class="stat" id="s-events">Events <span>—</span></div>
+    <div class="stat" id="s-pg">Postgres <span>—</span></div>
+  </div>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="baits">Baits</button>
+  <button class="tab-btn" data-tab="instances">Instances</button>
+  <button class="tab-btn" data-tab="events">Events</button>
+  <button class="tab-btn" data-tab="sessions">Sessions</button>
+</nav>
+
+<main>
+
+  <!-- ── Baits ── -->
+  <section id="tab-baits" class="active">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bait ID</th>
+            <th>Status</th>
+            <th>Tier</th>
+            <th>Deploy class</th>
+            <th>Channel</th>
+            <th>Version</th>
+            <th>Instances</th>
+            <th>Registered</th>
+          </tr>
+        </thead>
+        <tbody id="baits-body"><tr><td colspan="8" class="spinner">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Instances ── -->
+  <section id="tab-instances">
+    <div class="filters">
+      <label>Bait</label>
+      <input id="fi-bait" type="text" placeholder="bait_id">
+      <label>Campaign</label>
+      <input id="fi-campaign" type="text" placeholder="campaign_id">
+      <label>Status</label>
+      <select id="fi-status">
+        <option value="">all</option>
+        <option>pending</option>
+        <option>active</option>
+        <option>burned</option>
+        <option>retired</option>
+        <option>revoked</option>
+      </select>
+      <button onclick="renderInstances()" style="background:var(--accent);border:none;border-radius:6px;color:#000;cursor:pointer;font-size:13px;padding:5px 14px;">Filter</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Instance token</th>
+            <th>Bait ID</th>
+            <th>Campaign</th>
+            <th>Status</th>
+            <th>Built</th>
+            <th>Approved</th>
+            <th>Comment</th>
+            <th>To-stage dir</th>
+          </tr>
+        </thead>
+        <tbody id="instances-body"><tr><td colspan="8" class="spinner">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Events ── -->
+  <section id="tab-events">
+    <div class="filters">
+      <label>Bait</label>
+      <input id="fe-bait" type="text" placeholder="bait_id">
+      <label>Instance</label>
+      <input id="fe-instance" type="text" placeholder="instance_token">
+      <label>Sig</label>
+      <select id="fe-sig">
+        <option value="">all</option>
+        <option value="true">valid</option>
+        <option value="false">invalid</option>
+      </select>
+      <label>Limit</label>
+      <select id="fe-limit" style="width:70px">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+      </select>
+      <button onclick="renderEvents()" style="background:var(--accent);border:none;border-radius:6px;color:#000;cursor:pointer;font-size:13px;padding:5px 14px;">Filter</button>
+      <button id="live-btn" class="live-btn" onclick="toggleLive()">⬤ Live</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Bait</th>
+            <th>Instance</th>
+            <th>Source IP</th>
+            <th>Sig</th>
+            <th>Channel</th>
+            <th>Session</th>
+          </tr>
+        </thead>
+        <tbody id="events-body"><tr><td colspan="8" class="spinner">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Sessions ── -->
+  <section id="tab-sessions">
+    <div class="filters">
+      <label>Bait</label>
+      <input id="fs-bait" type="text" placeholder="bait_id">
+      <label>Instance</label>
+      <input id="fs-instance" type="text" placeholder="instance_token">
+      <label>Campaign</label>
+      <input id="fs-campaign" type="text" placeholder="campaign_id">
+      <label>Limit</label>
+      <select id="fs-limit" style="width:70px">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+      </select>
+      <button onclick="renderSessions()" style="background:var(--accent);border:none;border-radius:6px;color:#000;cursor:pointer;font-size:13px;padding:5px 14px;">Filter</button>
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 10px">
+      Records grouped by (instance_token, session_id) — a read-time approximation
+      (no idle-gap / state machine yet; that is the Tier-2 engine, §6.2).
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Session</th>
+            <th>Bait</th>
+            <th>Campaign</th>
+            <th>Events</th>
+            <th>Types</th>
+            <th>Source IPs</th>
+            <th>Caution</th>
+            <th>Sig</th>
+            <th>Last event</th>
+          </tr>
+        </thead>
+        <tbody id="sessions-body"><tr><td colspan="9" class="spinner">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ── API client ─────────────────────────────────────────────────────────────
+// Mirrors the server-side ObserverService contract. Add new endpoints here
+// when the service grows; the UI calls only these functions.
+const API = {
+  stats: () => get('/api/v1/stats'),
+  baits: {
+    list: ()       => get('/api/v1/baits'),
+    get:  (id)     => get(`/api/v1/baits/${id}`),
+  },
+  instances: {
+    list: (params) => get('/api/v1/instances', params),
+    get:  (tok)    => get(`/api/v1/instances/${tok}`),
+  },
+  events: {
+    list: (params) => get('/api/v1/events', params),
+    get:  (id)     => get(`/api/v1/events/${id}`),
+  },
+  sessions: {
+    list: (params) => get('/api/v1/sessions', params),
+  },
+  health: (params) => get('/api/v1/health', params),
+};
+
+async function get(path, params) {
+  const url = params && Object.keys(params).length
+    ? path + '?' + new URLSearchParams(Object.fromEntries(
+        Object.entries(params).filter(([,v]) => v !== null && v !== undefined && v !== '')
+      ))
+    : path;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+// ── state ──────────────────────────────────────────────────────────────────
+let liveInterval = null;
+let expandedRecordId = null;
+
+// ── tabs ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'baits') renderBaits();
+    if (btn.dataset.tab === 'instances') renderInstances();
+    if (btn.dataset.tab === 'events') renderEvents();
+    if (btn.dataset.tab === 'sessions') renderSessions();
+  });
+});
+
+// ── stats bar ──────────────────────────────────────────────────────────────
+async function refreshStats() {
+  try {
+    const s = await API.stats();
+    document.querySelector('#s-baits span').textContent = s.bait_count;
+    document.querySelector('#s-instances span').textContent =
+      `${s.active_instance_count} active / ${s.instance_count} total`;
+    document.querySelector('#s-events span').textContent = s.event_count.toLocaleString();
+    const pgEl = document.getElementById('s-pg');
+    pgEl.querySelector('span').textContent = s.postgres_ok ? 'connected' : 'unavailable';
+    pgEl.className = 'stat ' + (s.postgres_ok ? 'pg-ok' : 'pg-err');
+  } catch(e) {}
+}
+
+// ── baits ──────────────────────────────────────────────────────────────────
+async function renderBaits() {
+  const tbody = document.getElementById('baits-body');
+  tbody.innerHTML = '<tr><td colspan="8" class="spinner">Loading…</td></tr>';
+  try {
+    const baits = await API.baits.list();
+    if (!baits.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No baits registered yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = baits.map(b => `
+      <tr>
+        <td class="mono">${esc(b.bait_id)}${testTag(b.test)}</td>
+        <td>${badge(b.status)}</td>
+        <td>${b.assurance_tier}</td>
+        <td class="mono" style="font-size:12px">${esc(b.deploy_class)}</td>
+        <td class="mono" style="font-size:12px">${esc(b.default_channel || '—')}</td>
+        <td class="mono" style="font-size:12px">${esc(b.version || '—')}</td>
+        <td>${b.instance_count}</td>
+        <td class="token">${fmtDate(b.registered_at)}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+// ── instances ──────────────────────────────────────────────────────────────
+async function renderInstances() {
+  const tbody = document.getElementById('instances-body');
+  tbody.innerHTML = '<tr><td colspan="8" class="spinner">Loading…</td></tr>';
+  try {
+    const params = {
+      bait_id:     document.getElementById('fi-bait').value.trim() || undefined,
+      campaign_id: document.getElementById('fi-campaign').value.trim() || undefined,
+      status:      document.getElementById('fi-status').value || undefined,
+    };
+    const items = await API.instances.list(params);
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No instances found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items.map(i => `
+      <tr>
+        <td class="token">${esc(i.instance_token)}</td>
+        <td class="mono">${esc(i.bait_id)}</td>
+        <td class="mono" style="font-size:12px">${esc(i.campaign_id)}</td>
+        <td>${badge(i.status)}</td>
+        <td class="token">${fmtDate(i.built_at)}</td>
+        <td class="token">${fmtDate(i.approved_at)}</td>
+        <td class="mono" style="font-size:12px">${esc(i.comment || '')}</td>
+        <td class="mono" style="font-size:11px" title="${esc(i.artifact_dir || '')}">${esc(i.artifact_dir || '')}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+// ── events ─────────────────────────────────────────────────────────────────
+async function renderEvents() {
+  const tbody = document.getElementById('events-body');
+  const params = {
+    bait_id:        document.getElementById('fe-bait').value.trim() || undefined,
+    instance_token: document.getElementById('fe-instance').value.trim() || undefined,
+    sig_valid:      document.getElementById('fe-sig').value || undefined,
+    limit:          document.getElementById('fe-limit').value,
+  };
+  try {
+    const items = await API.events.list(params);
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No events yet.</td></tr>';
+      expandedRecordId = null;
+      return;
+    }
+    // Preserve expansion across refreshes
+    const prevExpanded = expandedRecordId;
+    tbody.innerHTML = items.map(ev => eventRow(ev)).join('');
+    // Re-attach click handlers
+    tbody.querySelectorAll('tr.clickable').forEach(row => {
+      row.addEventListener('click', () => toggleDetail(row.dataset.id, row, tbody));
+    });
+    // Restore expanded row
+    if (prevExpanded) {
+      const row = tbody.querySelector(`tr[data-id="${prevExpanded}"]`);
+      if (row) toggleDetail(prevExpanded, row, tbody, true);
+    }
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function eventRow(ev) {
+  const sigClass = ev.sig_valid ? 'sig-ok' : 'sig-bad';
+  const sigText  = ev.sig_valid ? '✓' : '✗';
+  const orphanHtml = ev.orphan ? ' <span class="orphan">orphan</span>' : '';
+  return `
+    <tr class="clickable" data-id="${esc(ev.record_id)}">
+      <td class="token">${fmtMs(ev.edge_recv_time)}</td>
+      <td class="mono">${esc(ev.event_type)}</td>
+      <td class="mono">${esc(ev.bait_id)}${testTag(ev.test)}</td>
+      <td class="token">${esc(ev.instance_token.slice(0,8))}…</td>
+      <td class="mono">${esc(ev.source_ip)}${orphanHtml}</td>
+      <td class="${sigClass}">${sigText}</td>
+      <td class="mono" style="font-size:12px">${esc(ev.channel)}</td>
+      <td class="token">${esc(ev.session_id.slice(0,8))}…</td>
+    </tr>`;
+}
+
+async function toggleDetail(recordId, row, tbody, forceOpen) {
+  // Remove any existing detail row
+  const existing = tbody.querySelector('.detail-row');
+  if (existing) {
+    existing.remove();
+    tbody.querySelectorAll('tr.expanded').forEach(r => r.classList.remove('expanded'));
+    if (expandedRecordId === recordId && !forceOpen) {
+      expandedRecordId = null;
+      return;
+    }
+  }
+
+  expandedRecordId = recordId;
+  row.classList.add('expanded');
+
+  const detailRow = document.createElement('tr');
+  detailRow.className = 'detail-row';
+  detailRow.innerHTML = `<td colspan="8"><div class="spinner">Loading detail…</div></td>`;
+  row.after(detailRow);
+
+  try {
+    const ev = await API.events.get(recordId);
+    detailRow.innerHTML = `<td colspan="8">${renderEventDetail(ev)}</td>`;
+  } catch(e) {
+    detailRow.innerHTML = `<td colspan="8" class="empty">Error: ${esc(e.message)}</td>`;
+  }
+}
+
+function renderEventDetail(ev) {
+  const fields = [
+    ['record_id',        ev.record_id],
+    ['bait_id',          ev.bait_id],
+    ['bait_version',     ev.bait_version],
+    ['instance_token',   ev.instance_token],
+    ['campaign_id',      ev.campaign_id],
+    ['session_id',       ev.session_id],
+    ['seq_no',           ev.seq_no],
+    ['event_type',       ev.event_type],
+    ['channel',          ev.channel],
+    ['assurance_tier',   ev.assurance_tier],
+    ['deploy_class',     ev.deploy_class],
+    ['source_ip',        ev.source_ip],
+    ['source_type',      ev.source_type],
+    ['source_ja3',       ev.source_ja3 || '—'],
+    ['sig_valid',        ev.sig_valid ? '✓ true' : '✗ false'],
+    ['orphan',           ev.orphan ? 'true' : 'false'],
+    ['test',             ev.test ? 'true' : 'false'],
+    ['instance_status',  ev.instance_status],
+    ['design_status',    ev.design_status],
+    ['edge_id',          ev.edge_id],
+    ['edge_recv_time',   fmtMs(ev.edge_recv_time) + ' (' + ev.edge_recv_time + ')'],
+    ['sensor_time',      fmtMs(ev.sensor_time) + ' (' + ev.sensor_time + ')'],
+    ['ingested_at',      ev.ingested_at || '—'],
+  ];
+
+  const simple = fields.map(([k, v]) => `
+    <div class="detail-field">
+      <span class="dk">${esc(k)}</span>
+      <span class="dv">${esc(String(v))}</span>
+    </div>`).join('');
+
+  const jsonBlocks = [
+    ['signals', ev.signals],
+    ['details', ev.details],
+  ].filter(([, v]) => v != null).map(([k, v]) => `
+    <div class="detail-field" style="grid-column: 1/-1">
+      <span class="dk">${k}</span>
+      <span class="dv json">${esc(JSON.stringify(v, null, 2))}</span>
+    </div>`).join('');
+
+  return `<div class="detail-grid">${simple}${jsonBlocks}</div>`;
+}
+
+// ── sessions ─────────────────────────────────────────────────────────────────
+async function renderSessions() {
+  const tbody = document.getElementById('sessions-body');
+  const params = {
+    bait_id:        document.getElementById('fs-bait').value.trim() || undefined,
+    instance_token: document.getElementById('fs-instance').value.trim() || undefined,
+    campaign_id:    document.getElementById('fs-campaign').value.trim() || undefined,
+    limit:          document.getElementById('fs-limit').value,
+  };
+  try {
+    const items = await API.sessions.list(params);
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items.map(sessionRow).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function cautionTag(level) {
+  const cls = { none: 'sig-ok', medium: 'orphan', high: 'sig-bad' }[level] || 'mono';
+  return `<span class="${cls}">${esc(level)}</span>`;
+}
+
+function sessionRow(s) {
+  const sigClass = s.sig_valid_all ? 'sig-ok' : 'sig-bad';
+  const sigText  = s.sig_valid_all ? '✓' : '✗';
+  const orphanHtml = s.orphan_any ? ' <span class="orphan">orphan</span>' : '';
+  return `
+    <tr>
+      <td class="token">${esc(s.instance_token.slice(0,8))}…-${esc(s.session_id.slice(0,8))}…</td>
+      <td class="mono">${esc(s.bait_id)}${testTag(s.test)}</td>
+      <td class="mono">${esc(s.campaign_id)}</td>
+      <td class="mono">${s.event_count}</td>
+      <td class="mono" style="font-size:12px">${esc(s.event_types.join(', '))}</td>
+      <td class="mono" style="font-size:12px">${esc(s.source_ips.join(', '))}${orphanHtml}</td>
+      <td>${cautionTag(s.caution_level)}</td>
+      <td class="${sigClass}">${sigText}</td>
+      <td class="token">${fmtMs(s.last_event_at)}</td>
+    </tr>`;
+}
+
+// ── live polling ───────────────────────────────────────────────────────────
+function toggleLive() {
+  const btn = document.getElementById('live-btn');
+  if (liveInterval) {
+    clearInterval(liveInterval);
+    liveInterval = null;
+    btn.classList.remove('on');
+    btn.textContent = '⬤ Live';
+  } else {
+    btn.classList.add('on');
+    btn.textContent = '◼ Stop';
+    renderEvents();
+    liveInterval = setInterval(renderEvents, 5000);
+  }
+}
+
+// ── formatters ─────────────────────────────────────────────────────────────
+function fmtMs(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return iso.replace('T', ' ').slice(0, 19);
+}
+
+function testTag(isTest) {
+  return isTest ? ' <span class="badge badge-test">TEST</span>' : '';
+}
+
+function badge(status) {
+  const cls = {
+    active: 'badge-active', pending: 'badge-pending', burned: 'badge-burned',
+    retired: 'badge-retired', revoked: 'badge-revoked', draft: 'badge-draft',
+    staged: 'badge-staged', deployed: 'badge-deployed',
+  }[status] || 'badge-default';
+  return `<span class="badge ${cls}">${esc(status)}</span>`;
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── init ───────────────────────────────────────────────────────────────────
+refreshStats();
+setInterval(refreshStats, 15000);
+renderBaits();
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+bait_id: console-baits-probe
+version: "1.0.0"
+description: >
+  E2E fixture bait for the `blacksea` console's bait/instance CRUD + lifecycle state
+  machine (`baits register/ls/show`, `instances build/approve/ls/show/artifact/
+  burn/retire/revoke`). Reuses the hostname_grab payload/listener/vessel — the point
+  of this entry is the console commands, not a new payload. Example/test bait — not
+  real intel.
+
+assurance_tier: 2          # tier-2: encrypted HTTPS body (HMAC-SHA256 AEAD)
+deploy_class: portable_artifact
+isolation_class: in_process
+test: true                 # example/test bait — flagged in the registry + observer
+
+channels:
+  https: {}
+
+envelope_version: 1
+
+# payload/listener/vessel are cataloged in lure_material/ (repo root, sibling of services/), referenced
+# by a "../"-relative path (same depth as e2e_tests/hostname_grab/). Resolved by the
+# factory/ingestion/brain pool via plain os.path.join(bait_dir, <path>), so no code changes needed.
+listener_class: ../../../lure_material/payloads/hostname_grab/listener.HostnameBeaconListener
+payload_file: ../../../lure_material/payloads/hostname_grab/payload.py
+staging_vessel: ../../../lure_material/staging_vessels/identity
+
+# Constants the factory injects into payload.py before bundling.
+build_vars:
+  - _SERVER_URL      # edge HTTPS callback URL, e.g. "http://cb.example.com:8443"
+  - _TOKEN           # hex-encoded instance_token (8 bytes)
+  - _KEY             # hex-encoded HMAC-SHA256 master key (32 bytes raw) — injected; never stored
+
+# Deploy-time parameters — self-sufficient for `forge`/manual poking, even though
+# e2e_test.sh drives register/build/approve as separate steps to exercise each verb.
+deploy:
+  campaign: example-console-baits-instances
+  callbacks:
+    https: http://127.0.0.1:8443
+
+provenance:
+  behavior: >
+    Example only — not grounded in an observed attacker behavior. Exists to exercise
+    the console's bait/instance lifecycle commands end-to-end. Not for live deployment.
+  source: services/e2e_tests/console_baits_instances/
+  observed_date: "2026-07-17"
+
+retention_days: 7
+
+build:
+  toolchain: python3.11
+  target_arch:
+    - x86_64-linux
