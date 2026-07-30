@@ -25,6 +25,8 @@ What the agent can't see is that the bait is also a canary (what we like to call
 
 ## How it works
 
+🚨For an end-to-end example check: [basic_usage_tutorial.md](./docs/basic_usage_tutorial.md).
+
 Blacksea is three things: **a server** you run on infrastructure you trust, **baits** you build with it and plant where an attacker will find them, and **records** that come back when one is tripped. It is not a passive sensor. The whole design is aimed at one moment, the attacker's own machine running your code. Everything else exists to make that moment happen and to get the result back to you safely.
 
 ### What a bait is made of
