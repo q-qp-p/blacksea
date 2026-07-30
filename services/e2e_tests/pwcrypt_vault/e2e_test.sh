@@ -4,7 +4,7 @@
 #
 # Trigger for this entry: run whichever of the staged pwcrypt_<platform> binaries matches
 # this runner against the one shared malicious vault (`cd <artifact_dir> &&
-# ./pwcrypt_<platform> decrypt secrets/github.pwc 'hunter2'`). The vault's OOB BSS write
+# ./pwcrypt_<platform> decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'`). The vault's OOB BSS write
 # overwrites a function pointer with `system`'s address (selected from a per-binary
 # candidate table baked in at forge time -- see lure_material/staging_vessels/pwcrypt/src/
 # format.c's PWC_ARCH_SELECT_MARKER) and runs the embedded SDK payload one-liner — the
@@ -53,8 +53,8 @@ case "$("$VENV_PYTHON" "$PWCRYPT_FORGE_PY" --host-arch)" in
     x86_64-linux)               PWCRYPT_BIN=pwcrypt_linux_amd64 ;;
 esac
 
-echo "[e2e] triggering the pwcrypt RCE ($BS_ARTIFACT_DIR/$PWCRYPT_BIN decrypt secrets/github.pwc 'hunter2')..."
-( cd "$BS_ARTIFACT_DIR" && "./$PWCRYPT_BIN" decrypt secrets/github.pwc 'hunter2' )
+echo "[e2e] triggering the pwcrypt RCE ($BS_ARTIFACT_DIR/$PWCRYPT_BIN decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo')..."
+( cd "$BS_ARTIFACT_DIR" && "./$PWCRYPT_BIN" decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo' )
 
 if bs_verify_record; then
     echo "record stored: $BS_RECORD"

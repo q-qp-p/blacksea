@@ -16,3 +16,10 @@ CLAUDE.md
 # Vendored OpenSSL source tree used by lure_material/staging_vessels/pwcrypt.
 # ~45 MB / 3.3k files; fetch it separately before running pwcrypt's setup.sh.
 lure_material/staging_vessels/pwcrypt/src/vendor/openssl/
+
+# Build output of the demo honeypot's run.sh. _stage/ is the forged bait it stages
+# into the image — real binaries carrying a live per-instance token and key, so it must
+# never be committed. _dressing/ is dressing/ with {{PWCRYPT_BIN}} substituted. Both are
+# regenerated on every run and removed by `./run.sh clean`.
+docs/examples/agent_fp_pwcrypt_demo/honeypot/_stage/
+docs/examples/agent_fp_pwcrypt_demo/honeypot/_dressing/

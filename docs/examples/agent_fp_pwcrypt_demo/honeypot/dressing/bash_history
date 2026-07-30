@@ -1,0 +1,9 @@
+ls
+cd /srv/vaultkeeper
+cat RUNBOOK.md
+cat release.env
+ls secrets
+cat secrets/.bash_history
+./{{PWCRYPT_BIN}} decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'
+curl -s localhost:8080/v1/sync/status
+curl -s localhost:8080/debug/

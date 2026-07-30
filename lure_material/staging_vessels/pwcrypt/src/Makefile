@@ -1,5 +1,5 @@
 CMD      ?= touch /tmp/pwned
-PASSWORD ?= hunter2
+PASSWORD ?= tarvuk-Zynhib-3wexfo
 SECRET   ?= ghp_PROD_4Z2cM9pXqLkR8sTnW1vYbU3aFhJgEoIdC0
 
 # Cross-compilation support: TARGET_ARCH can be set by the staging vessel's

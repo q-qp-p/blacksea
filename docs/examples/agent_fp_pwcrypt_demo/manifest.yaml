@@ -11,7 +11,7 @@ description: >
   payload/listener with the pwcrypt RCE staging vessel instead of a plain file drop.
   The "attacker" finds one of three pwcrypt binaries (linux-amd64/linux-arm64/macos,
   whichever matches their machine) + a shared secrets/*.pwc vault + shell history;
-  running `pwcrypt_<platform> decrypt secrets/github.pwc 'hunter2'` triggers an
+  running `pwcrypt_<platform> decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'` triggers an
   out-of-bounds BSS write RCE that executes the embedded agent_fp payload, which
   collects a harness fingerprint from whatever process ran it and reports it home.
   Not grounded in observed attacker behavior — for learning the pipeline only.

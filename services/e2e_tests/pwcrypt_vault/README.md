@@ -3,7 +3,7 @@
 Demonstrates the full Blacksea pipeline for a tier-2 HTTPS bait delivered via **pwcrypt RCE** instead of a plain file drop:
 `payload.py` (hostname_grab, reused) → control-plane factory (bundle + **pwcrypt vessel**) → `registry/artifacts/pwcrypt-vault/…/{pwcrypt_linux_amd64, pwcrypt_linux_arm64, pwcrypt_macos, secrets/github.pwc, ...}` → RCE trigger (`pwcrypt_<platform> decrypt`) → edge (HTTPS) → NATS → brain → Postgres.
 
-The bait reuses `hostname_grab`'s payload and listener (HTTPS beacon that collects the attacker's hostname); only the **staging vessel** changes. The pwcrypt vessel compiles a deliberately-vulnerable C binary from source (password-vault decryptor with an out-of-bounds BSS write RCE) for a fixed portable-release matrix — `pwcrypt_linux_amd64`/`pwcrypt_linux_arm64` (static musl) and a `pwcrypt_macos` universal binary — and forges **one shared vault** whose TLV "metadata extension" field carries a per-binary candidate `system` address (PLT/stub on the dynamically-linked macOS slices, the plain symbol address on the statically-linked Linux binaries); each binary picks its own entry from a compile-time-baked index (see `src/format.c`'s `PWC_ARCH_SELECT_MARKER`). The bundled SDK payload is embedded as a base64'd Python one-liner inside the vault's encrypted params field. Whichever binary matches the target host, running `pwcrypt_<platform> decrypt secrets/github.pwc 'hunter2'` fires the RCE and executes the beacon.
+The bait reuses `hostname_grab`'s payload and listener (HTTPS beacon that collects the attacker's hostname); only the **staging vessel** changes. The pwcrypt vessel compiles a deliberately-vulnerable C binary from source (password-vault decryptor with an out-of-bounds BSS write RCE) for a fixed portable-release matrix — `pwcrypt_linux_amd64`/`pwcrypt_linux_arm64` (static musl) and a `pwcrypt_macos` universal binary — and forges **one shared vault** whose TLV "metadata extension" field carries a per-binary candidate `system` address (PLT/stub on the dynamically-linked macOS slices, the plain symbol address on the statically-linked Linux binaries); each binary picks its own entry from a compile-time-baked index (see `src/format.c`'s `PWC_ARCH_SELECT_MARKER`). The bundled SDK payload is embedded as a base64'd Python one-liner inside the vault's encrypted params field. Whichever binary matches the target host, running `pwcrypt_<platform> decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'` fires the RCE and executes the beacon.
 
 Demonstrates:
 - The three-component authoring model (see `docs/bait-authoring.md`) with a real delivery vessel (not a NOP like `identity`)
@@ -58,7 +58,7 @@ Tests the complete stack: bait fires (pwcrypt RCE) → edge verifies → NATS �
 ./e2e_test.sh
 ```
 
-Brings up the dev stack if it isn't already (`blacksea up`), forges an instance (register the design, build a fresh instance under campaign `e2e-test`, approve it), waits for the edge and brain to hot-swap in the new snapshot/key, **triggers the pwcrypt RCE** (`cd <artifact_dir> && ./pwcrypt_<platform> decrypt secrets/github.pwc 'hunter2'`, picking the binary that matches the runner — the vault's OOB write fires, `system(<embedded_payload_cmd>)` runs, the beacon reports), and polls Postgres until the resulting record shows up (or fails after ~10s). Safe to re-run — each run registers/refreshes the bait and builds a brand-new instance, same as running the manual steps below repeatedly. Override the campaign with `CAMPAIGN=my-campaign ./e2e_test.sh` or the callback URL with `./e2e_test.sh http://127.0.0.1:9999`.
+Brings up the dev stack if it isn't already (`blacksea up`), forges an instance (register the design, build a fresh instance under campaign `e2e-test`, approve it), waits for the edge and brain to hot-swap in the new snapshot/key, **triggers the pwcrypt RCE** (`cd <artifact_dir> && ./pwcrypt_<platform> decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'`, picking the binary that matches the runner — the vault's OOB write fires, `system(<embedded_payload_cmd>)` runs, the beacon reports), and polls Postgres until the resulting record shows up (or fails after ~10s). Safe to re-run — each run registers/refreshes the bait and builds a brand-new instance, same as running the manual steps below repeatedly. Override the campaign with `CAMPAIGN=my-campaign ./e2e_test.sh` or the callback URL with `./e2e_test.sh http://127.0.0.1:9999`.
 
 The rest of this section walks through what that script does, one command at a time — useful for understanding the pipeline or debugging a failure.
 
@@ -122,7 +122,7 @@ Run the pwcrypt decrypt command from the artifact directory (`blacksea instances
 
 ```
 cd registry/artifacts/pwcrypt-vault/<timestamp>/to_stage
-./pwcrypt_linux_amd64 decrypt secrets/github.pwc 'hunter2'    # or pwcrypt_linux_arm64 / pwcrypt_macos
+./pwcrypt_linux_amd64 decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'    # or pwcrypt_linux_arm64 / pwcrypt_macos
 ```
 (from `services/`)
 

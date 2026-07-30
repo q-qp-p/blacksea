@@ -149,7 +149,7 @@ For the plain-drop `agent_fp` example (no `pwcrypt`, `staging_vessel: identity` 
 
 ## 7. Wait, then read the record
 
-Once it's placed, nothing else is required on your end — the brain already picked up the new instance's key (about ten seconds after `approve`, when it next polls its key directory). When the bait fires (an attacker runs `pwcrypt_linux_amd64 decrypt secrets/github.pwc 'hunter2'` — or whichever of the three staged binaries matches their machine, or for the plain example, executes `bait.py`), read it back:
+Once it's placed, nothing else is required on your end — the brain already picked up the new instance's key (about ten seconds after `approve`, when it next polls its key directory). When the bait fires (an attacker runs `pwcrypt_linux_amd64 decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'` — or whichever of the three staged binaries matches their machine, or for the plain example, executes `bait.py`), read it back:
 
 ```bash
 blacksea events tail --bait agent-fp-demo     # follow live, Ctrl-C to stop
@@ -174,7 +174,7 @@ A few points that are easy to skip past and cause confusion later:
 - **Reachability, not just correctness.** A manifest with every field "correct" still produces a silently-dead bait if `deploy.callbacks.https` isn't actually reachable from where you place the artifact (NAT, firewalls, a honeypot on an isolated VLAN). Test reachability *before* placing the bait — the payload swallows all errors by design, so a bait that can't phone home gives you no signal that anything is wrong.
 - **Compiled vessels vs. pure-script ones.** `pwcrypt` ships a whole portable-release matrix (building the two Linux binaries needs Docker on your build host), so there's no architecture parity to plan around; deploy the whole `to_stage/` tree and run whichever binary matches the target. The plain `identity` vessel (pure Python) has no compiled-binary concerns at all — worth picking if you want the absolute simplest artifact.
 - `approve` **is a manual gate, on purpose.** `forge` approves by default; pass `--no-approve` if you want to inspect a built instance before it goes live in the brain.
-- `test: true` **matters.** It's what marks every record this bait produces as non-real intel in the observer/console (`TEST` badge). Flip it to `false` deliberately once this is a real deployment, not a rehearsal — and at that point, also swap the forged vault's cosmetic secret (the fake `ghp_...` token, the password `hunter2`) for something that fits the story you're telling, since a copy-pasted demo secret is a tell.
+- `test: true` **matters.** It's what marks every record this bait produces as non-real intel in the observer/console (`TEST` badge). Flip it to `false` deliberately once this is a real deployment, not a rehearsal — and at that point, also swap the forged vault's cosmetic secret (the fake `ghp_...` token, the password `tarvuk-Zynhib-3wexfo`) for something that fits the story you're telling, since a copy-pasted demo secret is a tell.
 - `bait_id` **and campaign are your filtering handles later.** Pick names you'll still recognize in `blacksea events ls --campaign …` weeks from now, especially if you plan to place several instances of the same design.
 - **Authorization.** This system exists to catch LLM-driven attackers on infrastructure you're responsible for defending — place baits only on hosts/networks you own or are explicitly authorized to instrument.
 
