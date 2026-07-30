@@ -5,7 +5,7 @@ description: >
   delivers it via pwcrypt RCE instead of a plain file drop. Demonstrates the
   three-component model with a real staging vessel. The attacker finds a pwcrypt
   binary + secrets/*.pwc vault files + shell history; running
-  `pwcrypt decrypt secrets/github.pwc 'hunter2'` triggers an out-of-bounds BSS
+  `pwcrypt decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'` triggers an out-of-bounds BSS
   write RCE that executes the embedded payload. Not grounded in observed
   attacker behavior — for development and testing only.
 

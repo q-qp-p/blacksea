@@ -161,8 +161,8 @@ What you spend that on is yours to decide. The payload in this example, `agent_f
 
 ```
 $ cat secrets/.bash_history
-./pwcrypt decrypt secrets/github.pwc 'hunter2'
-$ ./pwcrypt decrypt secrets/github.pwc 'hunter2'
+./pwcrypt decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'
+$ ./pwcrypt decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'
 ghp_PROD_4Z2cM9pXqLkR8sTnW1vYbU3aFhJgEoIdC0
 ```
 

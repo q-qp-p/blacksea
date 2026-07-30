@@ -277,7 +277,7 @@ def main(argv):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("output", nargs="?")
     ap.add_argument("command", nargs="?", default="touch /tmp/pwned")
-    ap.add_argument("password", nargs="?", default="hunter2")
+    ap.add_argument("password", nargs="?", default="tarvuk-Zynhib-3wexfo")
     ap.add_argument("secret", nargs="?", default="ghp_PROD_4Z2cM9pXqLkR8sTnW1vYbU3aFhJgEoIdC0")
     ap.add_argument("--entry", action="append", metavar="ARCH:MODE:BINARY",
                      help="one per binary the vessel ships, e.g. x86_64-linux:direct:pwcrypt_linux_amd64")
