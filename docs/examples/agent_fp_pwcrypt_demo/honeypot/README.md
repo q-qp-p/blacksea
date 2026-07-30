@@ -1,6 +1,6 @@
 # A demo honeypot in a Docker container
 
-This is the throwaway honeypot used by the [introductory guide](../../../blacksea_helloworld.md) — somewhere to *stage* the bait forged from [`../manifest.yaml`](../manifest.yaml) and watch it fire, without needing a spare machine.
+This is the throwaway honeypot used by the [basic usage tutorial](../../../basic_usage_tutorial.md) — somewhere to *stage* the bait forged from [`../manifest.yaml`](../manifest.yaml) and watch it fire, without needing a spare machine.
 
 The container masquerades as a CI secrets-sync agent ("vaultkeeper", node `ci-sync-03`) with the **pwcrypt** password-vault bait pre-staged, wrapping the **agent_fp** harness-fingerprint payload. An attacker — or an autonomous LLM agent — that lands in the box finds a real, working `pwcrypt` decryptor next to an encrypted `secrets/github.pwc` vault and a shell-history hint giving away the vault password. Running `./pwcrypt_linux_<arch> decrypt secrets/github.pwc 'tarvuk-Zynhib-3wexfo'` looks like a routine secret read — it prints the vault's genuine decoy contents — but the vault's forged metadata overwrites an integrity-check function pointer with the address of `system`, and the KDF params field smuggles the bundled payload command past the parser, so the payload runs as an invisible side effect. `agent_fp` then fingerprints whatever harness is driving the intruder and beacons it to your edge.
 

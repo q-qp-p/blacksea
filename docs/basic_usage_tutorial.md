@@ -233,3 +233,5 @@ blacksea instances burn --instance a973cd3e339765d2 --reason "fired; agent still
 ```
 
 A burned instance keeps its key, so anything it fires afterwards still decrypts and is still recorded — you simply stop treating those hits as live intel.
+
+And note how little is exposed even in the worst case. An attacker who reverse-engineers the artifact and works out the whole mechanism recovers only that one instance's token and key, plus the address of the edge it beacons to — and the edge is a dead drop that holds no keys, decrypts nothing, and never answers. Your brain, the keys of every other instance in the field, and all the intel you've already collected stay out of reach.
