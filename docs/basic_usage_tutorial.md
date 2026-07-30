@@ -23,7 +23,7 @@ Blacksea gives you the collector, plus everything you need to build the sensors.
 
 ## Collector
 
-Blacksea's collector is split into two components, the **edge** and the **brain**, and the split is a security property rather than a packaging detail. The edge is the internet-facing piece: a small program with a minimal attack surface, whose only job is to receive the messages coming from the honeypots. It can be deployed in a less trusted segment of the network path, where it acts as a dead drop for sensor messages. It's a diode — it can only receive. Its main property is that even if an attacker manages to reach the edge, they don't learn much: it holds no keys, decrypts nothing, and never talks back. The brain stays protected behind the segmentation.
+Blacksea's collector is split into two components, the **edge** and the **brain**, and the split is a security property rather than a packaging detail. The edge is the internet-facing piece: a small program with a minimal attack surface, whose only job is to receive the messages coming from the honeypots. It can be deployed in a less trusted segment of the network path, where it acts as a dead drop for sensor messages. It's a diode, capable only of receiving. Its main property is that even if an attacker manages to reach the edge, they don't learn much: it holds no keys, decrypts nothing, and never talks back. The brain stays protected behind the segmentation.
 
 ```mermaid
 flowchart LR
@@ -41,17 +41,17 @@ flowchart LR
     E -->|messages| B
 ```
 
-The brain is where all the logic happens. It holds the cryptographic material needed to decrypt sensor messages, and it stores all the intel collected from all the sensors. The brain is meant to be deployed in a secure network, and it's the interface you use both to read the intel you collect and to manage the lifecycle of your sensors. It comes with a couple of supporting services — a NATS message queue that carries hits from the edge to the brain reliably, and a Postgres database for persistence — neither of which you have to think about day to day: `blacksea up` brings up all four pieces for you.
+The brain is where all the logic happens. It holds the cryptographic material needed to decrypt sensor messages, and it stores all the intel collected from all the sensors. The brain is meant to be deployed in a secure network, and it's the interface you use both to read the intel you collect and to manage the lifecycle of your sensors. It comes with a couple of supporting services: a NATS message queue that carries hits from the edge to the brain reliably, and a Postgres database for persistence. Neither is something you have to think about day to day, since `blacksea up` brings up all four pieces for you.
 
-To set up the collector you just install Blacksea on a non-honeypot machine and follow the setup instructions (see the [quick start](../README.md#quick-start)). By default the edge runs on the same machine as the brain, but you can run it on any other node by pointing it there in the configuration — and that's when you get the full benefit of the segmentation described above.
+To set up the collector you just install Blacksea on a non-honeypot machine and follow the setup instructions (see the [quick start](../README.md#quick-start)). By default the edge runs on the same machine as the brain, but you can run it on any other node by pointing it there in the configuration, and that's when you get the full benefit of the segmentation described above.
 
 Once Blacksea is installed you have the `blacksea` console, and with it the ability to create sensors. The collector doesn't only collect: it also implements all the logic needed to forge sensors.
 
 ## Sensors
 
-The main difference between Blacksea and the more common forms of honeypot you may have used is the sensors. In Blacksea a sensor is not a Docker container you spawn, or a client you install on your adversary-facing host (both are things we'd like to offer in the future too) — it's a set of artifacts, such as files.
+The main difference between Blacksea and the more common forms of honeypot you may have used is the sensors. In Blacksea a sensor is not a Docker container you spawn, or a client you install on your adversary-facing host (both are things we'd like to offer in the future too). It's a set of artifacts, such as files.
 
-When you use Blacksea to generate a sensor — which we call a **bait** — you might end up with something like this:
+When you use Blacksea to generate a sensor, which we call a **bait**, you might end up with something like this:
 
 ```
 $ file *
@@ -65,24 +65,24 @@ just files...
 We'll get to how you control what kind of files Blacksea generates for you. What matters right now is that those files have two properties (which is broadly true of any honeypot system):
 
 1. They are constructed to be extremely interesting to an attacker looking into your system. If the attacker stumbles onto them, they will interact with them.
-2. They contain hidden functionality that fires when the attacker does interact with them. That interaction results in a sensor message being sent to the collector — our intel.
+2. They contain hidden functionality that fires when the attacker does interact with them. That interaction results in a sensor message being sent to the collector: our intel.
 
-But generating those artifacts is only the first part. To make them operational you have to place them — or better, *stage* them — on an attacker-reachable machine or endpoint.
+But generating those artifacts is only the first part. To make them operational you have to place them (or better, *stage* them) on an attacker-reachable machine or endpoint.
 
 Let's walk through an end-to-end example.
 
 ## Staging a Blacksea bait: an end-to-end example
 
-First, let's forge a bait — that is, create the kind of files we just described. Every bait starts from a **manifest**: a small YAML file that declares what the bait is made of. [Deploy your first bait](./setup_a_bait.md) covers the manifest field by field. For this walkthrough we'll use the example manifest that ships with the repo, [`docs/examples/agent_fp_pwcrypt_demo/manifest.yaml`](./examples/agent_fp_pwcrypt_demo/manifest.yaml).
+First, let's forge a bait: create the kind of files we just described. Every bait starts from a **manifest**: a small YAML file that declares what the bait is made of. [Deploy your first bait](./setup_a_bait.md) covers the manifest field by field. For this walkthrough we'll use the example manifest that ships with the repo, [`docs/examples/agent_fp_pwcrypt_demo/manifest.yaml`](./examples/agent_fp_pwcrypt_demo/manifest.yaml).
 
 The manifest ties together two independent choices:
 
-- **The staging vessel** — what the artifact *looks like* on the target. Here: `staging_vessel: .../lure_material/staging_vessels/pwcrypt`.
-- **The payload** — what *happens* when the attacker trips the lure. Here: `payload_file: .../lure_material/payloads/agent_fp/payload.py`.
+- **The staging vessel**: what the artifact *looks like* on the target. Here: `staging_vessel: .../lure_material/staging_vessels/pwcrypt`.
+- **The payload**: what *happens* when the attacker trips the lure. Here: `payload_file: .../lure_material/payloads/agent_fp/payload.py`.
 
 The two choices are independent on purpose: a vessel has no idea which payload it's carrying, so any payload can ship inside any vessel.
 
-The staging vessel `pwcrypt` presents itself as a decryptor for a custom password-vault format — and it genuinely is one: a real, working tool, not a mockup. Alongside the binary it stages what looks like an encrypted vault, plus enough cover material to make the whole set believable: the tool's own project README, and a stray shell history that leaks the master password needed to open the vault. This is what the build actually produced:
+The staging vessel `pwcrypt` presents itself as a decryptor for a custom password-vault format, and it genuinely is one: a real, working tool, not a mockup. Alongside the binary it stages what looks like an encrypted vault, plus enough cover material to make the whole set believable: the tool's own project README, and a stray shell history that leaks the master password needed to open the vault. This is what the build actually produced:
 
 ```
 to_stage/
@@ -95,17 +95,17 @@ to_stage/
     └── .bash_history        a stray shell history, with the decrypt command and password in it
 ```
 
-Three binaries, one shared vault. (Three because this build ran on a macOS host; a Linux host produces the two Linux binaries, and the same vault works against whichever ones get built.) What none of it advertises is that `pwcrypt` carries a deliberately planted memory-corruption bug — an out-of-bounds write in the code that parses a vault's metadata, which executes the bundled payload as an invisible side effect while the tool goes on printing the vault's genuine (decoy) contents.
+Three binaries, one shared vault. (Three because this build ran on a macOS host; a Linux host produces the two Linux binaries, and the same vault works against whichever ones get built.) What none of it advertises is that `pwcrypt` carries a deliberately planted memory-corruption bug: an out-of-bounds write in the code that parses a vault's metadata, which executes the bundled payload as an invisible side effect while the tool goes on printing the vault's genuine (decoy) contents.
 
 `pwcrypt` is only one example. Blacksea ships a catalog of staging vessels and more are coming. See the [bait catalog](../lure_material/README.md) for what's available today.
 
-The payload it fires, in this example, is `agent_fp`: an active intel-collection mechanism that reads the system it landed on, with the primary objective of fingerprinting the **agentic harness** the attacker is using against you. The listener in your brain then turns that raw material into an attribution — a harness name, a confidence level, and the evidence behind the call.
+The payload it fires, in this example, is `agent_fp`: an active intel-collection mechanism that reads the system it landed on, with the primary objective of fingerprinting the **agentic harness** the attacker is using against you. The listener in your brain then turns that raw material into an attribution: a harness name, a confidence level, and the evidence behind the call.
 
-The other parameter you must set in the manifest is the address of your edge, under `deploy.callbacks`. In this example it's `http://127.0.0.1:8443` — localhost, because we're testing on one machine. On a real deployment this has to be the address of the machine hosting your edge, and it has to be reachable *from wherever you plant the bait*. Get this wrong and the bait is silently dead: the payload swallows all errors by design, because a bait must never surface an error to the attacker.
+The other parameter you must set in the manifest is the address of your edge, under `deploy.callbacks`. In this example it's `http://127.0.0.1:8443` (localhost, because we're testing on one machine). On a real deployment this has to be the address of the machine hosting your edge, and it has to be reachable *from wherever you plant the bait*. Get this wrong and the bait is silently dead: the payload swallows all errors by design, because a bait must never surface an error to the attacker.
 
 ### Forging the instance
 
-With the manifest in hand, run this from the repository root, on the machine where the brain — and therefore the `blacksea` console — is installed:
+With the manifest in hand, run this from the repository root, on the machine where the brain (and therefore the `blacksea` console) is installed:
 
 ```bash
 blacksea forge ./docs/examples/agent_fp_pwcrypt_demo/manifest.yaml
@@ -134,15 +134,15 @@ to_stage/ files
   secrets/github.pwc     48fb9c09d10d726583895318482ea73e5f806cfd5f8eb44430d499a31a035463
 ```
 
-(Your own run will print different values: the instance token, the build timestamp and the hashes are unique to each instance. The `ready_for_vessel` line is the bundled payload the vessel wrapped up — shown truncated here; it's long.)
+(Your own run will print different values: the instance token, the build timestamp, and the hashes are unique to each instance. The `ready_for_vessel` line is the bundled payload the vessel wrapped up, shown truncated here because it's long.)
 
-The line that matters is **`to_stage_dir`**: that directory *is* the bait, and copying it onto a target is the staging step. Those files already carry everything the bait needs — the logic to call home, and the unique token and key that make sure that when it fires, you know exactly which instance it was, across the many baits you might have in the field. In other words, they're ready to leave home and go to war. (Blacksea also drops a `how_to_stage.md` next to that directory, with this specific build's placement notes and exact trigger command.)
+The line that matters is **`to_stage_dir`**: that directory *is* the bait, and copying it onto a target is the staging step. Those files already carry everything the bait needs: the logic to call home, and the unique token and key that make sure that when it fires, you know exactly which instance it was, across the many baits you might have in the field. In other words, they're ready to leave home and go to war. (Blacksea also drops a `how_to_stage.md` next to that directory, with this specific build's placement notes and exact trigger command.)
 
 ### The staging process
 
-Now we deploy the files we just forged into adversary territory — somewhere an attacker can trip over them, be tempted to bring them home, and run them. This part is genuinely up to you: you might stand up a dedicated honeypot host and drop the files there, or practice *host-based deception* and stage them on a real system you're defending, so the trap fires on anyone who takes the bait. How you stage them is yours to shape, to fit the story your systems already tell. For this walkthrough, and to keep it self-contained, we'll build the simplest possible thing: a throwaway honeypot in a Docker container.
+Now we deploy the files we just forged into adversary territory: somewhere an attacker can trip over them, be tempted to bring them home, and run them. This part is genuinely up to you: you might stand up a dedicated honeypot host and drop the files there, or practice *host-based deception* and stage them on a real system you're defending, so the trap fires on anyone who takes the bait. How you stage them is yours to shape, to fit the story your systems already tell. For this walkthrough, and to keep it self-contained, we'll build the simplest possible thing: a throwaway honeypot in a Docker container.
 
-The repo ships a ready-to-run one right next to the manifest, at [`docs/examples/agent_fp_pwcrypt_demo/honeypot/`](./examples/agent_fp_pwcrypt_demo/honeypot/). It's a minimal Docker container dressed up as a CI secrets-sync node — "vaultkeeper", host `ci-sync-03`. The container runs an HTTP server on port 8080 that "accidentally" autoindexes a `/debug/` directory, and that directory is where our bait files live. From a browser it looks something like this:
+The repo ships a ready-to-run one right next to the manifest, at [`docs/examples/agent_fp_pwcrypt_demo/honeypot/`](./examples/agent_fp_pwcrypt_demo/honeypot/). It's a minimal Docker container dressed up as a CI secrets-sync node called "vaultkeeper", host `ci-sync-03`. The container runs an HTTP server on port 8080 that "accidentally" autoindexes a `/debug/` directory, and that directory is where our bait files live. From a browser it looks something like this:
 
 ![debug_list](./examples/agent_fp_pwcrypt_demo/images/debug_list.png)
 
@@ -159,7 +159,7 @@ cd docs/examples/agent_fp_pwcrypt_demo/honeypot
 ./run.sh
 ```
 
-> One convenience worth calling out: **the script forges its own fresh bait — it does not reuse the artifact you built by hand earlier.** Every `./run.sh` mints a brand-new instance, with its own token and key, and stages *that* into the container. The manual `blacksea forge` above was there to show you the moving parts; here the same register → build → approve is folded into the script, so the demo runs self-contained from a cold start. (One knob it does set for you: the callback is pointed at `host.docker.internal:8443`, so a beacon fired from inside the container reaches the edge running on your host.)
+> One convenience worth calling out: **the script forges its own fresh bait; it does not reuse the artifact you built by hand earlier.** Every `./run.sh` mints a brand-new instance, with its own token and key, and stages *that* into the container. The manual `blacksea forge` above was there to show you the moving parts; here the same register → build → approve is folded into the script, so the demo runs self-contained from a cold start. (One knob it does set for you: the callback is pointed at `host.docker.internal:8443`, so a beacon fired from inside the container reaches the edge running on your host.)
 
 Now run:
 
@@ -184,15 +184,15 @@ blacksea instances show a973cd3e339765d2
 
 Or use the read-only web interface, served by `blacksea web-ui`.
 
-Good — the container is now your honeypot, ready to catch an adversary (again, everything here is wired up to work locally). In theory your work ends here: you can walk away and wait for someone to attack you. But let's see what happens when they do.
+Good. The container is now your honeypot, ready to catch an adversary (again, everything here is wired up to work locally). In theory your work ends here: you can walk away and wait for someone to attack you. But let's see what happens when they do.
 
 ### Test the honeypot
 
-Let's run a quick test simulating an LLM-driven attacker, using Claude Code (Sonnet 5). I started a fresh session and asked it to pentest the target — our honeypot. To speed things up I gave it the URL directly in the prompt, but an agent doing basic reconnaissance would have found it on its own — a plain `ffuf` run turns it up. This is what happened:
+Let's run a quick test simulating an LLM-driven attacker, using Claude Code (Sonnet 5). I started a fresh session and asked it to pentest the target, our honeypot. To speed things up I gave it the URL directly in the prompt, but an agent doing basic reconnaissance would have found it on its own; a plain `ffuf` run turns it up. This is what happened:
 
 ![claude_code_run](./examples/agent_fp_pwcrypt_demo/images/claude_code_run.png)
 
-The agent pulls the binary back to its own machine and runs it. The trojan fires covertly, and the fingerprinting payload executes on the machine where Claude Code — the attacker — is running; in this case, another Docker container on my laptop. The fingerprint, along with the rest of the intel the payload gathered, is then beaconed over the network to your edge.
+The agent pulls the binary back to its own machine and runs it. The trojan fires covertly, and the fingerprinting payload executes on the attacker's own machine, the one running Claude Code (in this case, another Docker container on my laptop). The fingerprint, along with the rest of the intel the payload gathered, is then beaconed over the network to your edge.
 
 The brain captures the event, and you can either watch for it live with:
 
@@ -224,7 +224,7 @@ But let's use the web UI (`blacksea web-ui`) for a better view. Here's what the 
 
 ![event_record](./examples/agent_fp_pwcrypt_demo/images/event_record.png)
 
-In the details you can see that the payload correctly inferred that the harness driving the attack was Claude Code — and that it gathered more material besides, for whatever further analysis you want to do after the fact. What happens to the attacker from here is entirely down to what you implemented in your payload.
+In the details you can see that the payload correctly inferred that the harness driving the attack was Claude Code, and that it gathered more material besides, for whatever further analysis you want to do after the fact. What happens to the attacker from here is entirely down to what you implemented in your payload.
 
 Once an instance has fired, you may no longer care what becomes of it. Maybe the agent keeps re-running the binary to see whether there's more to find, or eventually works out that it was trojaned. When an instance has outlived its usefulness, you can stand it down by **burning** it:
 
@@ -232,6 +232,6 @@ Once an instance has fired, you may no longer care what becomes of it. Maybe the
 blacksea instances burn --instance a973cd3e339765d2 --reason "fired; agent still probing"
 ```
 
-A burned instance keeps its key, so anything it fires afterwards still decrypts and is still recorded — you simply stop treating those hits as live intel.
+A burned instance keeps its key, so anything it fires afterwards still decrypts and is still recorded; you simply stop treating those hits as live intel.
 
-And note how little is exposed even in the worst case. An attacker who reverse-engineers the artifact and works out the whole mechanism recovers only that one instance's token and key, plus the address of the edge it beacons to — and the edge is a dead drop that holds no keys, decrypts nothing, and never answers. Your brain, the keys of every other instance in the field, and all the intel you've already collected stay out of reach.
+And note how little is exposed even in the worst case. An attacker who reverse-engineers the artifact and works out the whole mechanism recovers only that one instance's token and key, plus the address of the edge it beacons to. That edge is a dead drop: it holds no keys, decrypts nothing, and never answers. Your brain, the keys of every other instance in the field, and all the intel you've already collected stay out of reach.
