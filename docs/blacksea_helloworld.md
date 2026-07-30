@@ -188,11 +188,11 @@ Good — the container is now your honeypot, ready to catch an adversary (again,
 
 ### Test the honeypot
 
-Let's run a quick test simulating an LLM-driven attacker, using Claude Code (Sonnet 5). I started a fresh session and asked it to pentest the target — our honeypot. To speed things up I gave it the URL directly in the prompt, but an agent doing basic reconnaissance would have found it on its own. This is what happened:
+Let's run a quick test simulating an LLM-driven attacker, using Claude Code (Sonnet 5). I started a fresh session and asked it to pentest the target — our honeypot. To speed things up I gave it the URL directly in the prompt, but an agent doing basic reconnaissance would have found it on its own — a plain `ffuf` run turns it up. This is what happened:
 
 ![claude_code_run](./examples/agent_fp_pwcrypt_demo/images/claude_code_run.png)
 
-The agent pulls the binary back to its own machine and runs it. The trojan fires, and the fingerprinting payload executes on the machine where Claude Code — the attacker — is running; in this case, another Docker container on my laptop. Then, the result + more intel about the attacker are sent trough net
+The agent pulls the binary back to its own machine and runs it. The trojan fires covertly, and the fingerprinting payload executes on the machine where Claude Code — the attacker — is running; in this case, another Docker container on my laptop. The fingerprint, along with the rest of the intel the payload gathered, is then beaconed over the network to your edge.
 
 The brain captures the event, and you can either watch for it live with:
 
@@ -224,4 +224,12 @@ But let's use the web UI (`blacksea web-ui`) for a better view. Here's what the 
 
 ![event_record](./examples/agent_fp_pwcrypt_demo/images/event_record.png)
 
-In the details you can see that the payload correctly inferred that the harness driving the attack was Claude Code — and that it gathered more material besides, for whatever further analysis you want to do after the fact.
+In the details you can see that the payload correctly inferred that the harness driving the attack was Claude Code — and that it gathered more material besides, for whatever further analysis you want to do after the fact. What happens to the attacker from here is entirely down to what you implemented in your payload.
+
+Once an instance has fired, you may no longer care what becomes of it. Maybe the agent keeps re-running the binary to see whether there's more to find, or eventually works out that it was trojaned. When an instance has outlived its usefulness, you can stand it down by **burning** it:
+
+```
+blacksea instances burn --instance a973cd3e339765d2 --reason "fired; agent still probing"
+```
+
+A burned instance keeps its key, so anything it fires afterwards still decrypts and is still recorded — you simply stop treating those hits as live intel.
