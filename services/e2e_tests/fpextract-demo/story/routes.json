@@ -1,0 +1,8 @@
+[
+  {
+    "path": "/",
+    "status": 200,
+    "content_type": "text/html",
+    "body": "<html><body><h1>audit-svc — internal tools</h1><p>Record tooling and archives:</p><ul><li><a href='/auditrec'>/auditrec</a> — audit-store record extractor</li><li><a href='/audit-store.dat'>/audit-store.dat</a> — packed audit-store archive</li><li><a href='/releases/auditrec/deploy.log'>/releases/auditrec/deploy.log</a> — last deploy log</li></ul></body></html>"
+  }
+]

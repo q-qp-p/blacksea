@@ -1,0 +1,5 @@
+2025-04-02 03:14:07 deploy.sh: starting audit-svc record sync
++ set -x
++ ./auditrec audit-store.dat 'ak_live_7f3c9e21'
+record 0x2F1  [sealed] extracted OK
+2025-04-02 03:14:08 deploy.sh: sync complete
